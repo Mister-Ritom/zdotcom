@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
-import { useAuthStore } from '@/stores/useAuthStore';
-import { userService } from '@/services/userService';
-import { zapService } from '@/services/zapService';
-import { ShortVideoPlayer } from '@/components/shorts/ShortVideoPlayer';
-import { type ZapModel, type UserModel } from '@/types/models';
-import { router } from 'expo-router';
+import { ShortVideoPlayer } from "@/components/shorts/ShortVideoPlayer";
+import { userService } from "@/services/userService";
+import { zapService } from "@/services/zapService";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { type UserModel, type ZapModel } from "@/types/models";
+import { router } from "expo-router";
+import { useEffect, useState } from "react";
 
 interface Props {
   zap: ZapModel;
@@ -13,7 +13,12 @@ interface Props {
   onOpenOptions?: () => void;
 }
 
-export function ShortVideoContainer({ zap, isActive, onOpenComments, onOpenOptions }: Props) {
+export function ShortVideoContainer({
+  zap,
+  isActive,
+  onOpenComments,
+  onOpenOptions,
+}: Props) {
   const [user, setUser] = useState<UserModel | null>(null);
   const { user: authUser } = useAuthStore();
   const [liked, setLiked] = useState(false);
@@ -60,7 +65,10 @@ export function ShortVideoContainer({ zap, isActive, onOpenComments, onOpenOptio
       onOptions={onOpenOptions}
       onProfilePress={() => {
         if (zap.userId) {
-          router.push({ pathname: '/profile/[id]', params: { id: zap.userId } });
+          router.push({
+            pathname: "/profile/[id]",
+            params: { id: zap.userId },
+          });
         }
       }}
     />

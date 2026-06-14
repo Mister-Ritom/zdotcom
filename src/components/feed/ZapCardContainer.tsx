@@ -20,6 +20,7 @@ export function ZapCardContainer({ zap, isShort = false, onPress }: Props) {
   const { user: authUser } = useAuthStore();
   const [liked, setLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(zap.likesCount);
+  const [rezapsCount, setRezapsCount] = useState(zap.rezapsCount);
   const [bookmarked, setBookmarked] = useState(false);
   const [boosted, setBoosted] = useState(false);
   const optionsSheetRef = useRef<BottomSheet>(null);
@@ -30,7 +31,8 @@ export function ZapCardContainer({ zap, isShort = false, onPress }: Props) {
 
   useEffect(() => {
     setLikesCount(zap.likesCount);
-  }, [zap.likesCount]);
+    setRezapsCount(zap.rezapsCount);
+  }, [zap.likesCount, zap.rezapsCount]);
 
   useEffect(() => {
     if (authUser?.id) {
@@ -50,8 +52,11 @@ export function ZapCardContainer({ zap, isShort = false, onPress }: Props) {
 
   const handleBoost = async () => {
     if (!authUser?.id) return;
+    // Prevent user from boosting their own post (matches Flutter behavior)
+    if (authUser.id === zap.userId) return;
     const nextBoosted = !boosted;
     setBoosted(nextBoosted);
+    setRezapsCount((prev) => prev + (nextBoosted ? 1 : -1));
     await zapService.toggleRepost(authUser.id, zap.id, isShort);
   };
 
@@ -79,7 +84,9 @@ export function ZapCardContainer({ zap, isShort = false, onPress }: Props) {
         user={user}
         isLiked={liked}
         isBookmarked={bookmarked}
+        isBoosted={boosted}
         likesCount={displayLikes}
+        rezapsCount={rezapsCount}
         onPress={handlePress}
         onLike={handleLike}
         onBookmark={handleBookmark}

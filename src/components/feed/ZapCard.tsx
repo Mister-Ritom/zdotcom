@@ -39,6 +39,7 @@ interface Props {
   isBookmarked?: boolean;
   isBoosted?: boolean;
   likesCount?: number;
+  rezapsCount?: number;
   onPress?: () => void;
   onLike?: () => void;
   onBookmark?: () => void;
@@ -53,6 +54,7 @@ export function ZapCard({
   isBookmarked = false,
   isBoosted = false,
   likesCount,
+  rezapsCount,
   onPress,
   onLike,
   onBookmark,
@@ -184,8 +186,7 @@ export function ZapCard({
           />
           <ActionBtn
             icon={<Repeat2 size={15} color={isBoosted ? '#10B981' : (isDark ? '#71717A' : '#A1A1AA')} strokeWidth={2} />}
-            label="Boost"
-            isText
+            label={formatCount(rezapsCount ?? zap.rezapsCount)}
             active={isBoosted}
             activeColor="#10B981"
             onPress={onBoost}

@@ -52,6 +52,7 @@
     },
     "plugins": [
       "./plugins/withModularHeaders",
+      "./plugins/withAndroidSigning",
       "expo-router",
       "expo-secure-store",
       [
@@ -59,7 +60,7 @@
         {
           "backgroundColor": "#208AEF",
           "android": {
-            "image": "./assets/images/icon_white.png",
+            "image": "./assets/images/icon_light.png",
             "imageWidth": 120
           }
         }
@@ -75,6 +76,12 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "1edcc475-e665-4558-9e0f-129452f506a1"
+      }
     }
   }
 }
