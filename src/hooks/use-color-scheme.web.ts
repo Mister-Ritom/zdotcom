@@ -13,7 +13,8 @@ export function useColorScheme(): 'light' | 'dark' {
     setHasHydrated(true);
   }, []);
 
-  const systemColorScheme = useRNColorScheme() ?? 'light';
+  const raw = useRNColorScheme();
+  const systemColorScheme: 'light' | 'dark' = raw === 'dark' ? 'dark' : 'light';
 
   if (hasHydrated) {
     if (theme === 'system') {

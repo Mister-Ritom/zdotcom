@@ -8,9 +8,10 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export interface CommentsSheetProps {
   postId: string;
+  onClose?: () => void;
 }
 
-export const CommentsSheet = forwardRef<BottomSheet, CommentsSheetProps>(({ postId }, ref) => {
+export const CommentsSheet = forwardRef<BottomSheet, CommentsSheetProps>(({ postId, onClose }, ref) => {
   const isDark = useColorScheme() === 'dark';
   const { user } = useAuthStore();
   const [comments, setComments] = useState<any[]>([]);
@@ -32,6 +33,12 @@ export const CommentsSheet = forwardRef<BottomSheet, CommentsSheetProps>(({ post
       fetchComments();
     }
   }, [postId]);
+
+  const handleAnimate = useCallback((fromIndex: number, toIndex: number) => {
+    if (toIndex === -1) {
+      onClose?.();
+    }
+  }, [onClose]);
 
   const renderBackdrop = useCallback(
     (props: any) => <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} />,
@@ -82,6 +89,7 @@ export const CommentsSheet = forwardRef<BottomSheet, CommentsSheetProps>(({ post
       index={-1}
       snapPoints={snapPoints}
       onChange={handleSheetChanges}
+      onAnimate={handleAnimate}
       backdropComponent={renderBackdrop}
       footerComponent={renderFooter}
       backgroundStyle={{ backgroundColor: isDark ? '#18181B' : '#FFFFFF' }}

@@ -8,6 +8,7 @@ import { type ZapModel, type UserModel } from '@/types/models';
 import { OptionsSheet } from '@/components/sheets/OptionsSheet';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { useRef } from 'react';
+import { useTabBarVisibility } from '@/contexts/TabBarVisibilityContext';
 
 interface Props {
   zap: ZapModel;
@@ -24,6 +25,7 @@ export function ZapCardContainer({ zap, isShort = false, onPress }: Props) {
   const [bookmarked, setBookmarked] = useState(false);
   const [boosted, setBoosted] = useState(false);
   const optionsSheetRef = useRef<BottomSheet>(null);
+  const { setTabBarHidden } = useTabBarVisibility();
 
   useEffect(() => {
     userService.getById(zap.userId).then(setUser);
@@ -91,9 +93,12 @@ export function ZapCardContainer({ zap, isShort = false, onPress }: Props) {
         onLike={handleLike}
         onBookmark={handleBookmark}
         onBoost={handleBoost}
-        onOptions={() => optionsSheetRef.current?.snapToIndex(0)}
+        onOptions={() => {
+          setTabBarHidden(true);
+          optionsSheetRef.current?.snapToIndex(0);
+        }}
       />
-      <OptionsSheet ref={optionsSheetRef} />
+      <OptionsSheet ref={optionsSheetRef} onClose={() => setTabBarHidden(false)} />
     </>
   );
 }

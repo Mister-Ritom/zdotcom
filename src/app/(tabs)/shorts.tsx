@@ -1,5 +1,9 @@
+import { CommentsSheet } from "@/components/sheets/CommentsSheet";
+import { OptionsSheet } from "@/components/sheets/OptionsSheet";
 import { ShortVideoContainer } from "@/components/shorts/ShortVideoContainer";
+import { useTabBarVisibility } from "@/contexts/TabBarVisibilityContext";
 import { useFeedStore } from "@/stores/useFeedStore";
+import BottomSheet from "@gorhom/bottom-sheet";
 import { useNavigation } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -9,26 +13,12 @@ import {
   Text,
   View,
 } from "react-native";
-import BottomSheet from "@gorhom/bottom-sheet";
-import { CommentsSheet } from "@/components/sheets/CommentsSheet";
-import { OptionsSheet } from "@/components/sheets/OptionsSheet";
 
 export default function ShortsScreen() {
   const navigation = useNavigation();
-  const [isFocused, setIsFocused] = useState(true);
-
-  useEffect(() => {
-    const unsubscribeFocus = navigation.addListener("focus", () =>
-      setIsFocused(true),
-    );
-    const unsubscribeBlur = navigation.addListener("blur", () =>
-      setIsFocused(false),
-    );
-    return () => {
-      unsubscribeFocus();
-      unsubscribeBlur();
-    };
-  }, [navigation]);
+  // Start as false — videos must NOT play until the shorts tab gains focus
+  const [isFocused, setIsFocused] = useState(false);
+  const { setTabBarHidden } = useTabBarVisibility();
 
   const { shorts, loadShorts, loadMoreShorts } = useFeedStore();
   const [activeIndex, setActiveIndex] = useState(0);
@@ -40,6 +30,7 @@ export default function ShortsScreen() {
   const optionsSheetRef = useRef<BottomSheet>(null);
   const [activeZapId, setActiveZapId] = useState<string | null>(null);
 
+  // Single focus/blur listener — plays when tab gains focus, pauses when it loses it
   useEffect(() => {
     const unsubscribeFocus = navigation.addListener("focus", () =>
       setIsFocused(true),
@@ -82,7 +73,7 @@ export default function ShortsScreen() {
   }
 
   return (
-    <View 
+    <View
       style={{ flex: 1, backgroundColor: "#000" }}
       onLayout={(e) => setItemH(e.nativeEvent.layout.height)}
     >
@@ -111,10 +102,12 @@ export default function ShortsScreen() {
                 isActive={isFocused && activeIndex === index}
                 onOpenComments={() => {
                   setActiveZapId(item.id);
+                  setTabBarHidden(true);
                   commentsSheetRef.current?.snapToIndex(0);
                 }}
                 onOpenOptions={() => {
                   setActiveZapId(item.id);
+                  setTabBarHidden(true);
                   optionsSheetRef.current?.snapToIndex(0);
                 }}
               />
@@ -122,8 +115,8 @@ export default function ShortsScreen() {
           )}
         />
       )}
-      <CommentsSheet ref={commentsSheetRef} postId={activeZapId ?? ''} />
-      <OptionsSheet ref={optionsSheetRef} />
+      <CommentsSheet ref={commentsSheetRef} postId={activeZapId ?? ""} onClose={() => setTabBarHidden(false)} />
+      <OptionsSheet ref={optionsSheetRef} onClose={() => setTabBarHidden(false)} />
     </View>
   );
 }

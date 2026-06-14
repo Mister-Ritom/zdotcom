@@ -4,9 +4,19 @@ import BottomSheet, { BottomSheetBackdrop, BottomSheetView } from '@gorhom/botto
 import { AlertTriangle, Share2, Bookmark, XCircle } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
-export const OptionsSheet = forwardRef<BottomSheet, any>((props, ref) => {
+export interface OptionsSheetProps {
+  onClose?: () => void;
+}
+
+export const OptionsSheet = forwardRef<BottomSheet, OptionsSheetProps>(({ onClose }, ref) => {
   const isDark = useColorScheme() === 'dark';
   const snapPoints = useMemo(() => ['35%'], []);
+
+  const handleAnimate = useCallback((fromIndex: number, toIndex: number) => {
+    if (toIndex === -1) {
+      onClose?.();
+    }
+  }, [onClose]);
 
   const renderBackdrop = useCallback(
     (bp: any) => <BottomSheetBackdrop {...bp} disappearsOnIndex={-1} appearsOnIndex={0} />,
@@ -27,6 +37,7 @@ export const OptionsSheet = forwardRef<BottomSheet, any>((props, ref) => {
       ref={ref}
       index={-1}
       snapPoints={snapPoints}
+      onAnimate={handleAnimate}
       backdropComponent={renderBackdrop}
       backgroundStyle={{ backgroundColor: isDark ? '#18181B' : '#FFFFFF' }}
       handleIndicatorStyle={{ backgroundColor: isDark ? '#52525B' : '#A1A1AA' }}
