@@ -1,0 +1,80 @@
+{
+  "expo": {
+    "name": "Z",
+    "slug": "Z",
+    "version": "1.0.0",
+    "description": "a modern social media app",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon_light.png",
+    "scheme": "z",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "icon": {
+        "light": "./assets/images/icon_light.png",
+        "dark": "./assets/images/icon_dark.png",
+        "tinted": "./assets/images/icon_tinted.png"
+      },
+      "bundleIdentifier": "me.ritom.z.z",
+      "infoPlist": {
+        "NSUserTrackingUsageDescription": "This identifier will be used to deliver personalized ads to you.",
+        "NSCameraUsageDescription": "This app requires access to your camera to take photos and videos.",
+        "NSMicrophoneUsageDescription": "This app requires access to your microphone to record audio in videos or voice features.",
+        "NSPhotoLibraryUsageDescription": "This app requires access to your photo library to select or upload images and videos.",
+        "NSPhotoLibraryAddUsageDescription": "This app needs permission to save images or videos to your photo library.",
+        "NSDocumentsFolderUsageDescription": "This app may access your documents folder to pick or manage files.",
+        "GADApplicationIdentifier": "ca-app-pub-2032620092700178~3236202307"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#ffffff",
+        "foregroundImage": "./assets/images/icon_black.png",
+        "monochromeImage": "./assets/images/icon_tinted.png"
+      },
+      "package": "me.ritom.z.z",
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "com.google.android.gms.permission.AD_ID",
+        "android.permission.POST_NOTIFICATIONS"
+      ],
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "output": "static",
+      "favicon": "./assets/images/icon_light.png"
+    },
+    "plugins": [
+      "./plugins/withModularHeaders",
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-splash-screen",
+        {
+          "backgroundColor": "#208AEF",
+          "android": {
+            "image": "./assets/images/icon_white.png",
+            "imageWidth": 120
+          }
+        }
+      ],
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.385298524193-89dvh6qif99gsopr625eapcp8audtrkc"
+        }
+      ],
+      "expo-video"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}
