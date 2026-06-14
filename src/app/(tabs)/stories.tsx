@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, FlatList, StyleSheet, RefreshControl, useColorScheme, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, StyleSheet, RefreshControl, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { storyService } from '@/services/storyService';
@@ -7,6 +7,7 @@ import { userService } from '@/services/userService';
 import { StoryRing } from '@/components/stories/StoryRing';
 import { StoryViewer } from '@/components/stories/StoryViewer';
 import { type GroupedStories } from '@/types/models';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 const ACCENT = '#208AEF';
 

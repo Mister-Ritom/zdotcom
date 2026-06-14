@@ -5,6 +5,9 @@ import { userService } from '@/services/userService';
 import { zapService } from '@/services/zapService';
 import { ZapCard } from '@/components/feed/ZapCard';
 import { type ZapModel, type UserModel } from '@/types/models';
+import { OptionsSheet } from '@/components/sheets/OptionsSheet';
+import BottomSheet from '@gorhom/bottom-sheet';
+import { useRef } from 'react';
 
 interface Props {
   zap: ZapModel;
@@ -18,6 +21,8 @@ export function ZapCardContainer({ zap, isShort = false, onPress }: Props) {
   const [liked, setLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(zap.likesCount);
   const [bookmarked, setBookmarked] = useState(false);
+  const [boosted, setBoosted] = useState(false);
+  const optionsSheetRef = useRef<BottomSheet>(null);
 
   useEffect(() => {
     userService.getById(zap.userId).then(setUser);
@@ -31,6 +36,7 @@ export function ZapCardContainer({ zap, isShort = false, onPress }: Props) {
     if (authUser?.id) {
       zapService.isLiked(authUser.id, zap.id, isShort).then(setLiked);
       zapService.isBookmarked(authUser.id, zap.id).then(setBookmarked);
+      zapService.isReposted(authUser.id, zap.id, isShort).then(setBoosted);
     }
   }, [zap.id, authUser?.id, isShort]);
 
@@ -40,6 +46,13 @@ export function ZapCardContainer({ zap, isShort = false, onPress }: Props) {
     setLiked(nextLiked);
     setLikesCount((prev) => prev + (nextLiked ? 1 : -1));
     await zapService.toggleLike(authUser.id, zap.id, isShort);
+  };
+
+  const handleBoost = async () => {
+    if (!authUser?.id) return;
+    const nextBoosted = !boosted;
+    setBoosted(nextBoosted);
+    await zapService.toggleRepost(authUser.id, zap.id, isShort);
   };
 
   const handleBookmark = async () => {
@@ -60,15 +73,20 @@ export function ZapCardContainer({ zap, isShort = false, onPress }: Props) {
   const displayLikes = Math.max(likesCount, liked ? 1 : 0);
 
   return (
-    <ZapCard
-      zap={zap}
-      user={user}
-      isLiked={liked}
-      isBookmarked={bookmarked}
-      likesCount={displayLikes}
-      onPress={handlePress}
-      onLike={handleLike}
-      onBookmark={handleBookmark}
-    />
+    <>
+      <ZapCard
+        zap={zap}
+        user={user}
+        isLiked={liked}
+        isBookmarked={bookmarked}
+        likesCount={displayLikes}
+        onPress={handlePress}
+        onLike={handleLike}
+        onBookmark={handleBookmark}
+        onBoost={handleBoost}
+        onOptions={() => optionsSheetRef.current?.snapToIndex(0)}
+      />
+      <OptionsSheet ref={optionsSheetRef} />
+    </>
   );
 }

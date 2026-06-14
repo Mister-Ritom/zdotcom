@@ -10,17 +10,11 @@
  */
 
 import React, { useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Animated,
-  TouchableOpacity,
-  useColorScheme,
-} from 'react-native';
+import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CheckCircle, AlertCircle, Upload, X } from 'lucide-react-native';
 import { useUploadStore, type UploadJob } from '@/stores/useUploadStore';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 // Auto-dismiss done jobs after 3 seconds
 const DONE_DISMISS_MS = 3000;

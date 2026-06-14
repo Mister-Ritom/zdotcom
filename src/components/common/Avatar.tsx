@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, useColorScheme } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 interface Props {
   uri?: string;

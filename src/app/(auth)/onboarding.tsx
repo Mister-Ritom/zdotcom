@@ -7,16 +7,7 @@
  */
 
 import { useRef, useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  useWindowDimensions,
-  ViewToken,
-  useColorScheme,
-} from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, useWindowDimensions, ViewToken } from 'react-native';
 import { useRouter } from 'expo-router';
 import Animated, {
   useSharedValue,
@@ -28,6 +19,7 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Users, Share2, Compass } from 'lucide-react-native';
 import { useSettingsStore } from '@/stores/useSettingsStore';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 type LucideIcon = typeof Users;

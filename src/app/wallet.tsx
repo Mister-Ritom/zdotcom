@@ -1,19 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  useColorScheme,
-  ActivityIndicator,
-} from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ArrowLeft, Coins, TrendingUp, TrendingDown } from 'lucide-react-native';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { walletService } from '@/services/walletService';
 import { type WalletModel, type TransactionModel } from '@/types/models';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 const ACCENT = '#208AEF';
 

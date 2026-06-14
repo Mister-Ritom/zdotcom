@@ -1,20 +1,12 @@
 import React, { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TextInput,
-  TouchableOpacity,
-  useColorScheme,
-  ActivityIndicator,
-} from 'react-native';
+import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Search as SearchIcon, X } from 'lucide-react-native';
 import { userService } from '@/services/userService';
 import { type UserModel } from '@/types/models';
 import { Avatar } from '@/components/common/Avatar';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 const ACCENT = '#208AEF';
 

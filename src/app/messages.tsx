@@ -1,15 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  useColorScheme,
-  ActivityIndicator,
-  Modal,
-  TextInput,
-} from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Modal, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ArrowLeft, MessageSquarePlus, Search } from 'lucide-react-native';
@@ -18,6 +8,7 @@ import { messageService } from '@/services/messageService';
 import { userService } from '@/services/userService';
 import { type ConversationModel, type UserModel } from '@/types/models';
 import { Avatar } from '@/components/common/Avatar';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 const ACCENT = '#208AEF';
 

@@ -1,14 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Pressable,
-  useColorScheme,
-  Share,
-  Dimensions,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Pressable, Share, Dimensions } from 'react-native';
 import { Image } from 'expo-image';
 import {
   Heart, MessageCircle, Repeat2, Share2, Bookmark,
@@ -19,6 +10,7 @@ import { ZapText } from '@/components/feed/ZapText';
 import { ZapVideoPlayer } from '@/components/feed/ZapVideoPlayer';
 import { type ZapModel } from '@/types/models';
 import { type UserModel } from '@/types/models';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 const isVideo = (url: string) => url.toLowerCase().includes('.mp4');
 
@@ -45,11 +37,13 @@ interface Props {
   user?: UserModel | null;
   isLiked?: boolean;
   isBookmarked?: boolean;
+  isBoosted?: boolean;
   likesCount?: number;
   onPress?: () => void;
   onLike?: () => void;
   onBookmark?: () => void;
   onBoost?: () => void;
+  onOptions?: () => void;
 }
 
 export function ZapCard({
@@ -57,11 +51,13 @@ export function ZapCard({
   user,
   isLiked = false,
   isBookmarked = false,
+  isBoosted = false,
   likesCount,
   onPress,
   onLike,
   onBookmark,
   onBoost,
+  onOptions,
 }: Props) {
   const isDark = useColorScheme() === 'dark';
   const hasMedia = zap.mediaUrls.length > 0;
@@ -108,7 +104,7 @@ export function ZapCard({
             </Text>
           </View>
         </View>
-        <TouchableOpacity hitSlop={8}>
+        <TouchableOpacity hitSlop={8} onPress={onOptions}>
           <Ellipsis size={18} color={isDark ? '#52525B' : '#A1A1AA'} />
         </TouchableOpacity>
       </View>
@@ -187,9 +183,11 @@ export function ZapCard({
             onPress={onPress}
           />
           <ActionBtn
-            icon={<Repeat2 size={15} color={isDark ? '#71717A' : '#A1A1AA'} strokeWidth={2} />}
+            icon={<Repeat2 size={15} color={isBoosted ? '#10B981' : (isDark ? '#71717A' : '#A1A1AA')} strokeWidth={2} />}
             label="Boost"
             isText
+            active={isBoosted}
+            activeColor="#10B981"
             onPress={onBoost}
           />
         </View>

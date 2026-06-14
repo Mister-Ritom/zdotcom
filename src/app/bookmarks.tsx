@@ -1,13 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  useColorScheme,
-  ActivityIndicator,
-} from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { ArrowLeft, Bookmark } from 'lucide-react-native';
@@ -15,6 +7,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { zapService } from '@/services/zapService';
 import { type ZapModel } from '@/types/models';
 import { ZapCardContainer } from '@/components/feed/ZapCardContainer';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 const ACCENT = '#208AEF';
 

@@ -4,13 +4,16 @@ import { userService } from '@/services/userService';
 import { zapService } from '@/services/zapService';
 import { ShortVideoPlayer } from '@/components/shorts/ShortVideoPlayer';
 import { type ZapModel, type UserModel } from '@/types/models';
+import { router } from 'expo-router';
 
 interface Props {
   zap: ZapModel;
   isActive: boolean;
+  onOpenComments?: () => void;
+  onOpenOptions?: () => void;
 }
 
-export function ShortVideoContainer({ zap, isActive }: Props) {
+export function ShortVideoContainer({ zap, isActive, onOpenComments, onOpenOptions }: Props) {
   const [user, setUser] = useState<UserModel | null>(null);
   const { user: authUser } = useAuthStore();
   const [liked, setLiked] = useState(false);
@@ -22,15 +25,11 @@ export function ShortVideoContainer({ zap, isActive }: Props) {
   }, [zap.userId]);
 
   useEffect(() => {
-    setLikesCount(zap.likesCount);
-  }, [zap.likesCount]);
-
-  useEffect(() => {
     if (authUser?.id) {
       zapService.isLiked(authUser.id, zap.id, true).then(setLiked);
       zapService.isBookmarked(authUser.id, zap.id).then(setBookmarked);
     }
-  }, [zap.id, authUser?.id]);
+  }, [zap.id, authUser?.id]); // Intentionally omitting zap.likesCount to avoid resetting optimistic updates
 
   const handleLike = async () => {
     if (!authUser?.id) return;
@@ -57,6 +56,13 @@ export function ShortVideoContainer({ zap, isActive }: Props) {
       likesCount={likesCount}
       onLike={handleLike}
       onBookmark={handleBookmark}
+      onComment={onOpenComments}
+      onOptions={onOpenOptions}
+      onProfilePress={() => {
+        if (zap.userId) {
+          router.push({ pathname: '/profile/[id]', params: { id: zap.userId } });
+        }
+      }}
     />
   );
 }

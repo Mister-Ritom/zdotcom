@@ -150,6 +150,22 @@ export const zapService = {
     }
   },
 
+  async isReposted(userId: string, zapId: string, isShort = false): Promise<boolean> {
+    try {
+      const targetType = isShort ? 'short' : 'zap';
+      const { data } = await supabase
+        .from('user_interactions')
+        .select('reshared')
+        .eq('user_id', userId)
+        .eq('target_id', zapId)
+        .eq('target_type', targetType)
+        .maybeSingle();
+      return data?.reshared === true;
+    } catch {
+      return false;
+    }
+  },
+
   async toggleRepost(userId: string, zapId: string, isShort = false): Promise<void> {
     try {
       const targetType = isShort ? 'short' : 'zap';
@@ -211,6 +227,18 @@ export const zapService = {
   async addComment(postId: string, userId: string, text: string): Promise<void> {
     try {
       await supabase.from('comments').insert({ post_id: postId, user_id: userId, text });
+      await supabase.rpc('increment_counter', {
+        p_table: 'zaps',
+        p_column: 'comments_count',
+        p_id: postId,
+        p_amount: 1,
+      });
+      await supabase.rpc('increment_counter', {
+        p_table: 'shorts',
+        p_column: 'comments_count',
+        p_id: postId,
+        p_amount: 1,
+      });
     } catch (e) {
       AppLogger.error('ZapService', 'addComment failed', e);
       throw e;

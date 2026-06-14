@@ -1,14 +1,5 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  useColorScheme,
-  Alert,
-  ScrollView,
-} from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert, ScrollView } from 'react-native';
 import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -17,6 +8,7 @@ import { ArrowLeft, Image as ImageIcon, Video, X } from 'lucide-react-native';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { runPostUploadJob, runStoryUploadJob } from '@/services/storageService';
 import { useUploadStore } from '@/stores/useUploadStore';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 const ACCENT = '#208AEF';
 type CreationType = 'post' | 'story' | 'short';

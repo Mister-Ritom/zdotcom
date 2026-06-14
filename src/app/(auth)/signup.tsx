@@ -9,19 +9,7 @@
  */
 
 import { useState, useRef } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  useColorScheme,
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { User, AtSign, Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
@@ -29,6 +17,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { mmkv } from '@/stores/useSettingsStore';
 import { AppLogger } from '@/utils/logger';
 import { supabase } from '@/services/supabase';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 const ACCENT = '#208AEF';
 const USERNAME_REGEX = /^[a-zA-Z0-9_]{1,15}$/;

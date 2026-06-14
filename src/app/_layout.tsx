@@ -10,13 +10,17 @@
  */
 
 import { useEffect } from 'react';
-import { useColorScheme, View, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { Stack, ThemeProvider, DarkTheme, DefaultTheme } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 
 import { useAuthStore, configureGoogleSignIn } from '@/stores/useAuthStore';
 import UploadStatusBanner from '@/components/upload/UploadStatusBanner';
+
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 // Keep the splash screen visible until auth resolves
 SplashScreen.preventAutoHideAsync();
@@ -41,18 +45,22 @@ export default function RootLayout() {
   }, [isInitialized]);
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
-      <View style={styles.root}>
-        <Stack screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="index" />
-          <Stack.Screen name="(auth)" />
-          <Stack.Screen name="(tabs)" />
-        </Stack>
-        {/* Global upload progress banner — floats above all screens */}
-        <UploadStatusBanner />
-      </View>
-    </ThemeProvider>
+    <GestureHandlerRootView style={styles.root}>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <BottomSheetModalProvider>
+          <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+          <View style={styles.root}>
+            <Stack screenOptions={{ headerShown: false }}>
+              <Stack.Screen name="index" />
+              <Stack.Screen name="(auth)" />
+              <Stack.Screen name="(tabs)" />
+            </Stack>
+            {/* Global upload progress banner — floats above all screens */}
+            <UploadStatusBanner />
+          </View>
+        </BottomSheetModalProvider>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }
 

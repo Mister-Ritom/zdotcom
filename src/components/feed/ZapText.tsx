@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { Text, useColorScheme } from 'react-native';
+import { Text } from 'react-native';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 interface Props {
   text: string;

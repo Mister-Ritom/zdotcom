@@ -1,22 +1,27 @@
-import React, { useEffect, useCallback, useState } from 'react';
+import { Avatar } from "@/components/common/Avatar";
+import { type UserModel, type ZapModel } from "@/types/models";
+import { useVideoPlayer, VideoView } from "expo-video";
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
+  Bookmark,
+  Ellipsis,
+  Heart,
+  MessageCircle,
+  Play,
+  Share2,
+} from "lucide-react-native";
+import React, { useCallback, useEffect, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
   Pressable,
   Share,
-  ActivityIndicator,
-} from 'react-native';
-import { useVideoPlayer, VideoView } from 'expo-video';
-import {
-  Heart, MessageCircle, Share2, Bookmark, Ellipsis, Play,
-} from 'lucide-react-native';
-import { Image } from 'expo-image';
-import { Avatar } from '@/components/common/Avatar';
-import { type ZapModel, type UserModel } from '@/types/models';
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
-const ACCENT = '#208AEF';
+const ACCENT = "#208AEF";
 
 function formatCount(n: number): string {
   if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
@@ -33,6 +38,7 @@ interface Props {
   onLike?: () => void;
   onBookmark?: () => void;
   onComment?: () => void;
+  onOptions?: () => void;
   onProfilePress?: () => void;
 }
 
@@ -46,6 +52,7 @@ export function ShortVideoPlayer({
   onLike,
   onBookmark,
   onComment,
+  onOptions,
   onProfilePress,
 }: Props) {
   const videoUrl = zap.mediaUrls[0];
@@ -72,7 +79,9 @@ export function ShortVideoPlayer({
   }, []);
 
   const handleShare = useCallback(async () => {
-    await Share.share({ message: `Watch this short on Z! z://short/${zap.id}` });
+    await Share.share({
+      message: `Watch this short on Z! z://short/${zap.id}`,
+    });
   }, [zap.id]);
 
   if (!videoUrl) return null;
@@ -86,13 +95,17 @@ export function ShortVideoPlayer({
         <VideoView
           style={StyleSheet.absoluteFill}
           player={player}
-          contentFit="cover"
+          contentFit="contain"
           nativeControls={false}
         />
         {/* Tap-to-pause icon overlay */}
-        {(!shouldPlay) && (
+        {!shouldPlay && (
           <View style={styles.pauseOverlay}>
-            <Play size={48} color="rgba(255,255,255,0.9)" fill="rgba(255,255,255,0.9)" />
+            <Play
+              size={48}
+              color="rgba(255,255,255,0.9)"
+              fill="rgba(255,255,255,0.9)"
+            />
           </View>
         )}
         {buffering && (
@@ -108,14 +121,21 @@ export function ShortVideoPlayer({
         <TouchableOpacity onPress={onProfilePress} style={styles.avatarWrap}>
           <Avatar
             uri={user?.profilePictureUrl}
-            name={user?.displayName ?? '?'}
+            name={user?.displayName ?? "?"}
             size={44}
             showBorder
           />
         </TouchableOpacity>
 
         <SideAction
-          icon={<Heart size={26} color={isLiked ? '#EF4444' : '#fff'} fill={isLiked ? '#EF4444' : 'none'} strokeWidth={2} />}
+          icon={
+            <Heart
+              size={26}
+              color={isLiked ? "#EF4444" : "#fff"}
+              fill={isLiked ? "#EF4444" : "none"}
+              strokeWidth={2}
+            />
+          }
           label={formatCount(likesCount ?? zap.likesCount)}
           onPress={onLike}
         />
@@ -133,8 +153,8 @@ export function ShortVideoPlayer({
           icon={
             <Bookmark
               size={26}
-              color={isBookmarked ? ACCENT : '#fff'}
-              fill={isBookmarked ? ACCENT : 'none'}
+              color={isBookmarked ? ACCENT : "#fff"}
+              fill={isBookmarked ? ACCENT : "none"}
               strokeWidth={2}
             />
           }
@@ -144,14 +164,14 @@ export function ShortVideoPlayer({
         <SideAction
           icon={<Ellipsis size={26} color="#fff" strokeWidth={2} />}
           label=""
-          onPress={() => {}}
+          onPress={onOptions}
         />
       </View>
 
       {/* Bottom overlay — creator info + caption */}
       <View style={styles.bottomOverlay}>
         <TouchableOpacity onPress={onProfilePress} style={styles.creatorRow}>
-          <Text style={styles.creatorName}>@{user?.username ?? '...'}</Text>
+          <Text style={styles.creatorName}>@{user?.username ?? "..."}</Text>
           {user?.isVerified && (
             <View style={styles.verifiedBadge}>
               <Text style={styles.verifiedText}>✓</Text>
@@ -176,7 +196,11 @@ interface SideActionProps {
 
 function SideAction({ icon, label, onPress }: SideActionProps) {
   return (
-    <TouchableOpacity onPress={onPress} style={styles.sideAction} activeOpacity={0.7}>
+    <TouchableOpacity
+      onPress={onPress}
+      style={styles.sideAction}
+      activeOpacity={0.7}
+    >
       {icon}
       {label.length > 0 && <Text style={styles.sideLabel}>{label}</Text>}
     </TouchableOpacity>
@@ -184,51 +208,75 @@ function SideAction({ icon, label, onPress }: SideActionProps) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
+  container: {
+    flex: 1,
+    backgroundColor: "#000",
+    justifyContent: "center",
+    alignItems: "center",
+    width: "100%",
+    height: "100%",
+  },
   pauseOverlay: {
     ...StyleSheet.absoluteFill,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.25)',
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.25)",
   },
   bufferOverlay: {
     ...StyleSheet.absoluteFill,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   actions: {
-    position: 'absolute',
+    position: "absolute",
     right: 12,
     bottom: 100,
-    alignItems: 'center',
+    alignItems: "center",
     gap: 16,
   },
   avatarWrap: { marginBottom: 4 },
-  sideAction: { alignItems: 'center', gap: 3 },
-  sideLabel: { color: '#fff', fontSize: 12, fontWeight: '700', textShadowColor: 'rgba(0,0,0,0.5)', textShadowRadius: 4 },
+  sideAction: { alignItems: "center", gap: 3 },
+  sideLabel: {
+    color: "#fff",
+    fontSize: 12,
+    fontWeight: "700",
+    textShadowColor: "rgba(0,0,0,0.5)",
+    textShadowRadius: 4,
+  },
   bottomOverlay: {
-    position: 'absolute',
+    position: "absolute",
     left: 16,
     right: 80,
     bottom: 90,
   },
-  creatorRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
-  creatorName: { color: '#fff', fontSize: 15, fontWeight: '800', textShadowColor: 'rgba(0,0,0,0.6)', textShadowRadius: 6 },
+  creatorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 6,
+  },
+  creatorName: {
+    color: "#fff",
+    fontSize: 15,
+    fontWeight: "800",
+    textShadowColor: "rgba(0,0,0,0.6)",
+    textShadowRadius: 6,
+  },
   verifiedBadge: {
-    backgroundColor: '#208AEF',
+    backgroundColor: "#208AEF",
     borderRadius: 9,
     width: 18,
     height: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
-  verifiedText: { color: '#fff', fontSize: 10, fontWeight: '900' },
+  verifiedText: { color: "#fff", fontSize: 10, fontWeight: "900" },
   caption: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
     lineHeight: 20,
-    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowColor: "rgba(0,0,0,0.6)",
     textShadowRadius: 6,
-    fontWeight: '500',
+    fontWeight: "500",
   },
 });

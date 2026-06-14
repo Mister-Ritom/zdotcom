@@ -1,20 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  useColorScheme,
-  ActivityIndicator,
-  TouchableOpacity,
-} from 'react-native';
+import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { supabase } from '@/services/supabase';
 import { userService } from '@/services/userService';
 import { Avatar } from '@/components/common/Avatar';
 import { router } from 'expo-router';
-import { Heart, Repeat2, MessageCircle, UserPlus, AtSign, Bell } from 'lucide-react-native';
+import { Heart, Repeat2, MessageCircle, UserPlus, AtSign, Bell, ArrowLeft } from 'lucide-react-native';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 const ACCENT = '#208AEF';
 
@@ -126,7 +119,11 @@ export default function NotificationsScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: bg }]} edges={['top']}>
       <View style={[styles.header, { borderBottomColor: border }]}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
+          <ArrowLeft size={22} color={isDark ? '#FFF' : '#000'} />
+        </TouchableOpacity>
         <Text style={[styles.title, { color: isDark ? '#FFF' : '#000' }]}>Notifications</Text>
+        <View style={{ width: 22 }} />
       </View>
 
       {loading ? (
@@ -180,8 +177,9 @@ export default function NotificationsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80 },
-  header: { paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1 },
-  title: { fontSize: 22, fontWeight: '800' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
+  iconBtn: { padding: 4 },
+  title: { fontSize: 17, fontWeight: '700' },
   row: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, gap: 12 },
   notifContent: { flex: 1 },
   notifText: { fontSize: 14, fontWeight: '500', lineHeight: 20 },
