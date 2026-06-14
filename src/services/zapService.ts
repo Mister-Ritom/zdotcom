@@ -1,6 +1,7 @@
 import { supabase } from '@/services/supabase';
 import { AppLogger } from '@/utils/logger';
 import { type ZapModel, zapFromRow } from '@/types/models';
+import uuid from 'react-native-uuid';
 
 const ZAPS_TABLE = 'zaps';
 // Shorts are stored in the same 'zaps' table, filtered by is_short = true
@@ -262,7 +263,9 @@ export const zapService = {
 
   async createZap(zap: Partial<ZapModel>): Promise<void> {
     try {
+      const id = zap.id || (uuid.v4() as string);
       const payload: Record<string, any> = {
+        id,
         user_id: zap.userId,
         text: zap.text,
         media_urls: zap.mediaUrls ?? [],
@@ -274,10 +277,17 @@ export const zapService = {
         is_deleted: false,
         created_at: new Date().toISOString(),
       };
-      if (zap.id) payload.id = zap.id;
 
       const { error } = await supabase.from('zaps').insert(payload);
       if (error) throw error;
+      
+      // Increment user's zaps count just like Flutter app did
+      await supabase.rpc('increment_counter', {
+        p_table: 'profiles',
+        p_column: 'zaps_count',
+        p_id: zap.userId,
+        p_amount: 1,
+      });
     } catch (e) {
       AppLogger.error('ZapService', 'createZap failed', e);
       throw e;

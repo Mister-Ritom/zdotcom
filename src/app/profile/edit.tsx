@@ -17,6 +17,7 @@ import { Image } from 'expo-image';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { userService } from '@/services/userService';
 import { supabase } from '@/services/supabase';
+import { uploadProfileImageFile } from '@/services/storageService';
 
 const ACCENT = '#208AEF';
 
@@ -70,26 +71,6 @@ export default function EditProfileScreen() {
     }
   };
 
-  const uploadImage = async (uri: string, bucket: string): Promise<string> => {
-    try {
-      const ext = uri.split('.').pop() || 'jpg';
-      const fileName = `${user?.id}_${Date.now()}.${ext}`;
-      const response = await fetch(uri);
-      const blob = await response.blob();
-      
-      const { error } = await supabase.storage.from(bucket).upload(fileName, blob, {
-        contentType: `image/${ext === 'png' ? 'png' : 'jpeg'}`,
-      });
-      if (error) throw error;
-      
-      const { data: publicData } = supabase.storage.from(bucket).getPublicUrl(fileName);
-      return publicData.publicUrl;
-    } catch (e) {
-      console.error('Upload failed', e);
-      throw e;
-    }
-  };
-
   const pickImage = async (type: 'profile' | 'cover') => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -99,10 +80,13 @@ export default function EditProfileScreen() {
         quality: 0.8,
       });
 
-      if (!result.canceled && result.assets[0]) {
+      if (!result.canceled && result.assets[0] && user?.id) {
         setUploadingImage(true);
         const bucket = type === 'profile' ? 'profile_pictures' : 'cover_photos';
-        const url = await uploadImage(result.assets[0].uri, bucket);
+        
+        // Use the centralized storage service
+        const url = await uploadProfileImageFile(result.assets[0].uri, user.id, bucket);
+        
         if (type === 'profile') setProfilePictureUrl(url);
         else setCoverPhotoUrl(url);
       }

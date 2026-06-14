@@ -6,19 +6,17 @@ import {
   TextInput,
   TouchableOpacity,
   useColorScheme,
-  ActivityIndicator,
   Alert,
-  Image,
   ScrollView,
-  Platform,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { ArrowLeft, Image as ImageIcon, Video, X } from 'lucide-react-native';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { zapService } from '@/services/zapService';
-import { storyService } from '@/services/storyService';
+import { runPostUploadJob, runStoryUploadJob } from '@/services/storageService';
+import { useUploadStore } from '@/stores/useUploadStore';
 
 const ACCENT = '#208AEF';
 type CreationType = 'post' | 'story' | 'short';
@@ -31,7 +29,8 @@ export default function CreationScreen() {
   const [text, setText] = useState('');
   const [mediaUri, setMediaUri] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<'image' | 'video' | null>(null);
-  const [submitting, setSubmitting] = useState(false);
+
+  const resetMedia = () => { setMediaUri(null); setMediaType(null); };
 
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -40,7 +39,9 @@ export default function CreationScreen() {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: activeTab === 'short' ? ImagePicker.MediaTypeOptions.Videos : ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: activeTab === 'short'
+        ? ImagePicker.MediaTypeOptions.Videos
+        : ImagePicker.MediaTypeOptions.Images,
       quality: 0.85,
       allowsEditing: true,
     });
@@ -58,7 +59,9 @@ export default function CreationScreen() {
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: activeTab === 'short' ? ImagePicker.MediaTypeOptions.Videos : ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: activeTab === 'short'
+        ? ImagePicker.MediaTypeOptions.Videos
+        : ImagePicker.MediaTypeOptions.Images,
       quality: 0.85,
     });
     if (!result.canceled && result.assets.length > 0) {
@@ -68,7 +71,7 @@ export default function CreationScreen() {
     }
   };
 
-  const handleCreate = async () => {
+  const handleCreate = () => {
     if (!user?.id) { Alert.alert('Error', 'Not authenticated'); return; }
     if (activeTab === 'post' && !text.trim() && !mediaUri) {
       Alert.alert('Error', 'Add some text or media'); return;
@@ -77,32 +80,38 @@ export default function CreationScreen() {
       Alert.alert('Error', `Media is required for ${activeTab}s`); return;
     }
 
-    setSubmitting(true);
-    try {
-      // NOTE: In production, upload mediaUri to Supabase Storage first, then use the remote URL
-      const remoteUrl = mediaUri ?? '';
+    // Build a unique job ID and label for the upload banner
+    const jobId = `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const label = text.trim()
+      ? text.trim().slice(0, 32) + (text.length > 32 ? '…' : '')
+      : activeTab === 'story' ? 'Story' : activeTab === 'short' ? 'Short' : 'Post';
 
-      if (activeTab === 'post') {
-        await zapService.createZap({
-          userId: user.id, text: text.trim(),
-          mediaUrls: remoteUrl ? [remoteUrl] : [], isShort: false,
-        });
-      } else if (activeTab === 'short') {
-        await zapService.createZap({
-          userId: user.id, text: text.trim(),
-          mediaUrls: [remoteUrl], isShort: true,
-        });
-      } else {
-        await storyService.createStory({
-          userId: user.id, caption: text.trim(), mediaUrl: remoteUrl, visibility: 'public',
-        });
-      }
-      Alert.alert('Success', 'Published!', [{ text: 'OK', onPress: () => router.replace('/(tabs)') }]);
-    } catch {
-      Alert.alert('Error', 'Failed to publish');
-    } finally {
-      setSubmitting(false);
+    // Register the job — the banner will immediately show "Waiting…"
+    useUploadStore.getState().addJob({ id: jobId, type: activeTab, label });
+
+    // Fire-and-forget: kick off the background upload WITHOUT awaiting
+    if (activeTab === 'story') {
+      runStoryUploadJob({
+        type: 'story',
+        jobId,
+        userId: user.id,
+        caption: text.trim(),
+        mediaUri: mediaUri!,
+        visibility: 'public',
+      });
+    } else {
+      runPostUploadJob({
+        type: activeTab,
+        jobId,
+        userId: user.id,
+        text: text.trim(),
+        mediaUri,
+        isShort: activeTab === 'short',
+      });
     }
+
+    // Close the screen immediately — user can see upload progress in the banner
+    router.replace('/(tabs)');
   };
 
   const bg = isDark ? '#09090B' : '#FFF';
@@ -117,12 +126,8 @@ export default function CreationScreen() {
           <ArrowLeft size={22} color={textColor} />
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: textColor }]}>Create New</Text>
-        <TouchableOpacity onPress={handleCreate} disabled={submitting} style={styles.publishWrap}>
-          {submitting ? (
-            <ActivityIndicator size="small" color={ACCENT} />
-          ) : (
-            <Text style={styles.publishBtn}>Publish</Text>
-          )}
+        <TouchableOpacity onPress={handleCreate} style={styles.publishWrap}>
+          <Text style={styles.publishBtn}>Publish</Text>
         </TouchableOpacity>
       </View>
 
@@ -131,7 +136,7 @@ export default function CreationScreen() {
         {(['post', 'story', 'short'] as const).map((tab) => (
           <TouchableOpacity
             key={tab}
-            onPress={() => { setActiveTab(tab); setMediaUri(null); setMediaType(null); setText(''); }}
+            onPress={() => { setActiveTab(tab); resetMedia(); setText(''); }}
             style={[styles.tab, activeTab === tab && { borderBottomColor: ACCENT }]}
           >
             <Text style={[styles.tabText, { color: activeTab === tab ? ACCENT : '#888' }]}>
@@ -145,8 +150,8 @@ export default function CreationScreen() {
         {/* Media Preview */}
         {mediaUri ? (
           <View style={styles.mediaPreviewWrap}>
-            <Image source={{ uri: mediaUri }} style={styles.mediaPreview} resizeMode="cover" />
-            <TouchableOpacity style={styles.removeMedia} onPress={() => { setMediaUri(null); setMediaType(null); }}>
+            <Image source={{ uri: mediaUri }} style={styles.mediaPreview} contentFit="cover" />
+            <TouchableOpacity style={styles.removeMedia} onPress={resetMedia}>
               <X size={18} color="#FFF" />
             </TouchableOpacity>
             {mediaType === 'video' && (
@@ -157,17 +162,22 @@ export default function CreationScreen() {
             )}
           </View>
         ) : (
-          /* Media Picker Buttons */
           <View style={[styles.mediaPicker, { borderColor: border }]}>
             <Text style={[styles.mediaPickerLabel, { color: '#888' }]}>
               {activeTab === 'short' ? 'Select a video' : 'Add photo or video'}
             </Text>
             <View style={styles.mediaPickerBtns}>
-              <TouchableOpacity style={[styles.mediaBtn, { backgroundColor: isDark ? '#18181B' : '#F4F4F5' }]} onPress={pickImage}>
+              <TouchableOpacity
+                style={[styles.mediaBtn, { backgroundColor: isDark ? '#18181B' : '#F4F4F5' }]}
+                onPress={pickImage}
+              >
                 <ImageIcon size={22} color={ACCENT} />
                 <Text style={[styles.mediaBtnText, { color: textColor }]}>Library</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={[styles.mediaBtn, { backgroundColor: isDark ? '#18181B' : '#F4F4F5' }]} onPress={pickCamera}>
+              <TouchableOpacity
+                style={[styles.mediaBtn, { backgroundColor: isDark ? '#18181B' : '#F4F4F5' }]}
+                onPress={pickCamera}
+              >
                 <Video size={22} color={ACCENT} />
                 <Text style={[styles.mediaBtnText, { color: textColor }]}>Camera</Text>
               </TouchableOpacity>
@@ -178,11 +188,11 @@ export default function CreationScreen() {
         {/* Caption */}
         <View style={styles.form}>
           <Text style={[styles.label, { color: '#888' }]}>
-            {activeTab === 'story' ? 'Caption (optional)' : activeTab === 'short' ? 'Caption' : 'What\'s on your mind?'}
+            {activeTab === 'story' ? 'Caption (optional)' : activeTab === 'short' ? 'Caption' : "What's on your mind?"}
           </Text>
           <TextInput
             style={[styles.textArea, { color: textColor, borderColor: border, backgroundColor: isDark ? '#18181B' : '#F9F9F9' }]}
-            placeholder={activeTab === 'post' ? 'Share your thoughts...' : 'Add a caption...'}
+            placeholder={activeTab === 'post' ? 'Share your thoughts…' : 'Add a caption…'}
             placeholderTextColor="#666"
             value={text}
             onChangeText={setText}

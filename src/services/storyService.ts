@@ -1,6 +1,7 @@
 import { supabase } from '@/services/supabase';
 import { AppLogger } from '@/utils/logger';
 import { type StoryModel, type GroupedStories, storyFromRow } from '@/types/models';
+import uuid from 'react-native-uuid';
 import { userService } from '@/services/userService';
 
 export const storyService = {
@@ -57,7 +58,9 @@ export const storyService = {
 
   async createStory(story: Partial<StoryModel>): Promise<void> {
     try {
+      const id = story.id || (uuid.v4() as string);
       const payload: Record<string, any> = {
+        id,
         user_id: story.userId,
         caption: story.caption,
         media_url: story.mediaUrl,
@@ -65,7 +68,6 @@ export const storyService = {
         is_deleted: false,
         created_at: new Date().toISOString(),
       };
-      if (story.id) payload.id = story.id;
 
       const { error } = await supabase.from('stories').insert(payload);
       if (error) throw error;
