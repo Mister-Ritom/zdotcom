@@ -10,8 +10,8 @@
  */
 
 import { useState, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Image } from 'react-native';
-import { useRouter, Link } from 'expo-router';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -219,7 +219,7 @@ export default function LoginScreen() {
           {/* Sign-up link */}
           <View style={styles.linkRow}>
             <Text style={[styles.linkText, { color: c.textSecondary }]}>
-              Don't have an account?{' '}
+              {"Don't have an account? "}
             </Text>
             <TouchableOpacity onPress={() => router.push('/(auth)/signup')}>
               <Text style={styles.linkAction}>Sign Up</Text>

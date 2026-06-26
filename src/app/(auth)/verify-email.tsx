@@ -17,6 +17,7 @@ import { MailCheck } from 'lucide-react-native';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { AppLogger } from '@/utils/logger';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { getCleanErrorMessage } from '@/utils/errors';
 
 const ACCENT = '#208AEF';
 
@@ -66,7 +67,7 @@ export default function VerifyEmailScreen() {
           "We couldn't sign you in. Please confirm your email first, then tap \"I've confirmed my email\".",
         );
       } else {
-        Alert.alert('Error', msg);
+        Alert.alert('Error', getCleanErrorMessage(e));
       }
     } finally {
       setIsChecking(false);
@@ -83,8 +84,7 @@ export default function VerifyEmailScreen() {
       await resendEmailConfirmation(pendingEmail);
       Alert.alert('Email Sent', 'A new confirmation email has been sent to ' + pendingEmail);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      Alert.alert('Failed to resend', msg);
+      Alert.alert('Failed to resend', getCleanErrorMessage(e));
     } finally {
       setIsResending(false);
     }
@@ -114,7 +114,7 @@ export default function VerifyEmailScreen() {
         <View style={styles.gap16} />
 
         <Text style={[styles.body, { color: c.textSecondary }]}>
-          We've sent a confirmation email to:
+          {"We've sent a confirmation email to:"}
         </Text>
         <Text style={[styles.emailDisplay, { color: c.text }]}>{displayEmail}</Text>
 
@@ -136,7 +136,7 @@ export default function VerifyEmailScreen() {
           {isChecking ? (
             <ActivityIndicator color="#fff" size="small" />
           ) : (
-            <Text style={styles.primaryButtonText}>I've confirmed my email</Text>
+            <Text style={styles.primaryButtonText}>{"I've confirmed my email"}</Text>
           )}
         </TouchableOpacity>
 
