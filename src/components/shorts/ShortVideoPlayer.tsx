@@ -8,11 +8,14 @@ import {
   MessageCircle,
   Play,
   Share2,
+  Volume2,
+  VolumeX,
 } from "lucide-react-native";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Platform,
   Pressable,
   Share,
   StyleSheet,
@@ -22,6 +25,9 @@ import {
 } from "react-native";
 
 const ACCENT = "#208AEF";
+
+const isWebPlatform = Platform.OS === "web";
+let globalMutedState = isWebPlatform; // module-level global mute state
 
 function formatCount(n: number): string {
   if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
@@ -58,25 +64,99 @@ export function ShortVideoPlayer({
   const videoUrl = zap.mediaUrls[0];
   const [manualPaused, setManualPaused] = useState(false);
   const [buffering, setBuffering] = useState(false);
+  // On web, browsers block unmuted autoplay. Start muted and let the user unmute.
+  const isWeb = Platform.OS === "web";
+  const [isMuted, setIsMuted] = useState(globalMutedState);
+
+  const [tempVisible, setTempVisible] = useState(false);
+  const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const showControlsTemporarily = useCallback(() => {
+    setTempVisible(true);
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current);
+    }
+    hideTimerRef.current = setTimeout(() => {
+      setTempVisible(false);
+    }, 2200); // Hide after 2.2 seconds
+  }, []);
 
   const player = useVideoPlayer(videoUrl ?? null, (p) => {
     p.loop = true;
-    p.muted = false;
+    p.muted = globalMutedState;
   });
 
   // Play / pause driven by isActive + manualPaused
   useEffect(() => {
     if (!player) return;
     if (isActive && !manualPaused) {
-      player.play();
+      // Wrap in try/catch — browser autoplay policy can still reject even muted
+      // play in certain contexts (e.g. low battery mode on iOS Safari).
+      try {
+        const promise = player.play();
+        if (promise && typeof promise.catch === "function") {
+          promise.catch((e: any) => {
+            console.warn('[ShortVideoPlayer] play() blocked by browser policy:', e?.message);
+          });
+        }
+      } catch (e: any) {
+        console.warn('[ShortVideoPlayer] play() threw synchronous error:', e?.message);
+      }
     } else {
       player.pause();
     }
   }, [isActive, manualPaused, player]);
 
+  // Synchronize player muted changes back to state and update the global state
+  useEffect(() => {
+    if (!player) return;
+    setIsMuted(player.muted);
+    const sub = player.addListener("mutedChange", ({ muted }) => {
+      setIsMuted(muted);
+      globalMutedState = muted; // Update global state so next/other videos respect it
+    });
+    return () => {
+      sub.remove();
+    };
+  }, [player]);
+
+  // Show temporary controls on mount, active state change, or when player changes.
+  // Also sync player muted state with the global muted state when this video becomes active.
+  useEffect(() => {
+    if (isActive) {
+      showControlsTemporarily();
+      if (player) {
+        player.muted = globalMutedState;
+        setIsMuted(globalMutedState);
+      }
+    }
+    return () => {
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    };
+  }, [isActive, player, showControlsTemporarily]);
+
+  const toggleMute = useCallback(() => {
+    if (!player) return;
+    const next = !player.muted;
+    player.muted = next;
+    setIsMuted(next);
+    globalMutedState = next; // Update global state
+    showControlsTemporarily();
+    // First unmute may be blocked if user hasn't interacted — handle gracefully
+    if (!next && player.status === 'paused') {
+      try {
+        const promise = player.play();
+        if (promise && typeof promise.catch === "function") {
+          promise.catch(() => {});
+        }
+      } catch (e) {}
+    }
+  }, [player, showControlsTemporarily]);
+
   const togglePlayPause = useCallback(() => {
     setManualPaused((prev) => !prev);
-  }, []);
+    showControlsTemporarily();
+  }, [showControlsTemporarily]);
 
   const handleShare = useCallback(async () => {
     await Share.share({
@@ -84,16 +164,25 @@ export function ShortVideoPlayer({
     });
   }, [zap.id]);
 
-  if (!videoUrl) return null;
+  if (!videoUrl) {
+    console.log('[ShortVideoPlayer] ❌ no videoUrl for zap:', zap.id);
+    return null;
+  }
 
   const shouldPlay = isActive && !manualPaused;
 
   return (
-    <View style={styles.container}>
+    <View
+      style={styles.container}
+      onMouseEnter={isWeb ? showControlsTemporarily : undefined}
+      onLayout={(e) =>
+        console.log('[ShortVideoPlayer] container layout — h:', e.nativeEvent.layout.height, '| w:', e.nativeEvent.layout.width)
+      }
+    >
       {/* Video */}
-      <Pressable style={StyleSheet.absoluteFill} onPress={togglePlayPause}>
+      <Pressable style={styles.videoPressable} onPress={togglePlayPause}>
         <VideoView
-          style={StyleSheet.absoluteFill}
+          style={styles.video}
           player={player}
           contentFit="contain"
           nativeControls={false}
@@ -114,6 +203,21 @@ export function ShortVideoPlayer({
           </View>
         )}
       </Pressable>
+
+      {/* Mute/unmute button — centered */}
+      {(isMuted || tempVisible) && (
+        <TouchableOpacity
+          style={styles.muteButton}
+          onPress={toggleMute}
+          activeOpacity={0.7}
+        >
+          {isMuted ? (
+            <VolumeX size={26} color="#fff" strokeWidth={2.5} />
+          ) : (
+            <Volume2 size={26} color="#fff" strokeWidth={2.5} />
+          )}
+        </TouchableOpacity>
+      )}
 
       {/* Right actions column */}
       <View style={styles.actions}>
@@ -215,6 +319,39 @@ const styles = StyleSheet.create({
     alignItems: "center",
     width: "100%",
     height: "100%",
+  },
+  videoPressable: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: "#000",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  video: {
+    width: "100%",
+    height: "100%",
+    position: "absolute",
+    left: 0,
+    top: 0,
+  },
+  muteButton: {
+    position: "absolute",
+    left: "50%",
+    top: "50%",
+    transform: [
+      { translateX: -27 },
+      { translateY: -27 },
+    ],
+    zIndex: 99,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    alignItems: "center",
+    justifyContent: "center",
   },
   pauseOverlay: {
     ...StyleSheet.absoluteFill,

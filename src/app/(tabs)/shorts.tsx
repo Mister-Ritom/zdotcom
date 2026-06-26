@@ -9,8 +9,10 @@ import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Platform,
   StyleSheet,
   Text,
+  useWindowDimensions,
   View,
 } from "react-native";
 
@@ -24,7 +26,15 @@ export default function ShortsScreen() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [initialized, setInitialized] = useState(false);
 
-  const [itemH, setItemH] = useState(0);
+  // Single source of truth — no onLayout, no double render.
+  // Dimensions are derived once from useWindowDimensions and never change mid-render.
+  const { height: windowH, width: windowW } = useWindowDimensions();
+  const isWeb = Platform.OS === "web";
+
+  // On web: center a 9:16 portrait card with black bars on the sides.
+  // On native: full screen width and height.
+  const cardW = isWeb ? Math.min(Math.floor(windowH * (9 / 16)), windowW) : windowW;
+  const itemH = windowH;
 
   const commentsSheetRef = useRef<BottomSheet>(null);
   const optionsSheetRef = useRef<BottomSheet>(null);
@@ -47,6 +57,18 @@ export default function ShortsScreen() {
   useEffect(() => {
     loadShorts(true).then(() => setInitialized(true));
   }, []);
+
+  // Index-based prefetch: when 3 items from the end of the loaded buffer,
+  // fetch the next page. More precise than scroll-distance-based onEndReached.
+  const PREFETCH_THRESHOLD = 3;
+  useEffect(() => {
+    if (
+      shorts.zaps.length > 0 &&
+      activeIndex >= shorts.zaps.length - PREFETCH_THRESHOLD
+    ) {
+      loadMoreShorts();
+    }
+  }, [activeIndex, shorts.zaps.length]);
 
   const onViewRef = useRef(({ viewableItems }: any) => {
     if (viewableItems.length > 0) setActiveIndex(viewableItems[0].index ?? 0);
@@ -72,51 +94,62 @@ export default function ShortsScreen() {
     );
   }
 
+  // On web: render a centered 9:16 card (like YouTube Shorts).
+  // Card width is derived from the window height in a single pass.
+  // On native: each item fills the full screen width.
+
   return (
-    <View
-      style={{ flex: 1, backgroundColor: "#000" }}
-      onLayout={(e) => setItemH(e.nativeEvent.layout.height)}
-    >
-      {itemH > 0 && (
-        <FlatList
-          data={shorts.zaps}
-          keyExtractor={(z) => z.id}
-          pagingEnabled
-          showsVerticalScrollIndicator={false}
-          decelerationRate="fast"
-          snapToInterval={itemH}
-          snapToAlignment="start"
-          getItemLayout={(_, index) => ({
-            length: itemH,
-            offset: itemH * index,
-            index,
-          })}
-          onViewableItemsChanged={onViewRef.current}
-          viewabilityConfig={viewConfig.current}
-          onEndReached={loadMoreShorts}
-          onEndReachedThreshold={2}
-          scrollIndicatorInsets={{ bottom: 0 }}
-          automaticallyAdjustsScrollIndicatorInsets={false}
-          renderItem={({ item, index }) => (
-            <View style={{ height: itemH }}>
-              <ShortVideoContainer
-                zap={item}
-                isActive={isFocused && activeIndex === index}
-                onOpenComments={() => {
-                  setActiveZapId(item.id);
-                  setTabBarHidden(true);
-                  commentsSheetRef.current?.snapToIndex(0);
-                }}
-                onOpenOptions={() => {
-                  setActiveZapId(item.id);
-                  setTabBarHidden(true);
-                  optionsSheetRef.current?.snapToIndex(0);
-                }}
-              />
-            </View>
-          )}
-        />
-      )}
+    <View style={s.root}>
+      {/* FlatList always renders — itemH is seeded from useWindowDimensions */}
+      <View style={isWeb ? [s.webWrapper, { width: cardW }] : s.nativeWrapper}>
+          <FlatList
+            data={shorts.zaps}
+            keyExtractor={(z) => z.id}
+            pagingEnabled
+            showsVerticalScrollIndicator={false}
+            decelerationRate="fast"
+            snapToInterval={itemH}
+            snapToAlignment="start"
+            getItemLayout={(_, index) => ({
+              length: itemH,
+              offset: itemH * index,
+              index,
+            })}
+            style={s.list}
+            // Virtualization: keep only current + 1 above + 1 below rendered.
+            // This ensures off-screen video players are unmounted and stop buffering.
+            windowSize={3}
+            initialNumToRender={1}
+            maxToRenderPerBatch={2}
+            removeClippedSubviews
+            onViewableItemsChanged={onViewRef.current}
+            viewabilityConfig={viewConfig.current}
+            // Pagination is driven by the index-based useEffect above,
+            // not scroll-distance, so onEndReached is intentionally omitted.
+            scrollIndicatorInsets={{ bottom: 0 }}
+            automaticallyAdjustsScrollIndicatorInsets={false}
+            renderItem={({ item, index }) => (
+              // Explicit width + height required on web — without width,
+              // RN Web renders FlatList items inline (side-by-side).
+              <View style={{ height: itemH, width: cardW }}>
+                <ShortVideoContainer
+                  zap={item}
+                  isActive={isFocused && activeIndex === index}
+                  onOpenComments={() => {
+                    setActiveZapId(item.id);
+                    setTabBarHidden(true);
+                    commentsSheetRef.current?.snapToIndex(0);
+                  }}
+                  onOpenOptions={() => {
+                    setActiveZapId(item.id);
+                    setTabBarHidden(true);
+                    optionsSheetRef.current?.snapToIndex(0);
+                  }}
+                />
+              </View>
+            )}
+          />
+      </View>
       <CommentsSheet ref={commentsSheetRef} postId={activeZapId ?? ""} onClose={() => setTabBarHidden(false)} />
       <OptionsSheet ref={optionsSheetRef} onClose={() => setTabBarHidden(false)} />
     </View>
@@ -124,5 +157,25 @@ export default function ShortsScreen() {
 }
 
 const s = StyleSheet.create({
+  root: {
+    flex: 1,
+    backgroundColor: "#000",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  // Web: centered narrow card, black bars on the sides
+  webWrapper: {
+    flex: 1,
+    overflow: "hidden",
+  },
+  // Native: fill the screen
+  nativeWrapper: {
+    flex: 1,
+    width: "100%",
+  },
+  list: {
+    flex: 1,
+    width: "100%",
+  },
   center: { flex: 1, alignItems: "center", justifyContent: "center" },
 });
