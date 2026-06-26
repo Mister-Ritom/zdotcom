@@ -12,35 +12,39 @@
  *   "avatars" → profile pictures & cover photos
  */
 
-import { supabase } from '@/services/supabase';
-import { AppLogger } from '@/utils/logger';
-import { useUploadStore, type UploadType } from '@/stores/useUploadStore';
-import { zapService } from '@/services/zapService';
-import { storyService } from '@/services/storyService';
-import { type ZapModel } from '@/types/models';
-import { type StoryModel } from '@/types/models';
+import { storyService } from "@/services/storyService";
+import { supabase } from "@/services/supabase";
+import { zapService } from "@/services/zapService";
+import { useUploadStore } from "@/stores/useUploadStore";
+import { AppLogger } from "@/utils/logger";
 
-const TAG = 'StorageService';
+const TAG = "StorageService";
 
-export type UploadBucket = 'zap_media' | 'shorts' | 'stories' | 'profile_pictures' | 'cover_photos' | 'documents';
+export type UploadBucket =
+  | "zap_media"
+  | "shorts"
+  | "stories"
+  | "profile_pictures"
+  | "cover_photos"
+  | "documents";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
 function mimeFromUri(uri: string): string {
-  const lower = uri.toLowerCase().split('?')[0];
-  if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
-  if (lower.endsWith('.png')) return 'image/png';
-  if (lower.endsWith('.webp')) return 'image/webp';
-  if (lower.endsWith('.gif')) return 'image/gif';
-  if (lower.endsWith('.mp4')) return 'video/mp4';
-  if (lower.endsWith('.mov')) return 'video/quicktime';
-  if (lower.endsWith('.webm')) return 'video/webm';
-  if (lower.endsWith('.heic') || lower.endsWith('.heif')) return 'image/jpeg';
-  return 'application/octet-stream';
+  const lower = uri.toLowerCase().split("?")[0];
+  if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+  if (lower.endsWith(".png")) return "image/png";
+  if (lower.endsWith(".webp")) return "image/webp";
+  if (lower.endsWith(".gif")) return "image/gif";
+  if (lower.endsWith(".mp4")) return "video/mp4";
+  if (lower.endsWith(".mov")) return "video/quicktime";
+  if (lower.endsWith(".webm")) return "video/webm";
+  if (lower.endsWith(".heic") || lower.endsWith(".heif")) return "image/jpeg";
+  return "application/octet-stream";
 }
 
 function buildStoragePath(userId: string, uri: string): string {
-  const ext = uri.split('?')[0].split('.').pop() ?? 'bin';
+  const ext = uri.split("?")[0].split(".").pop() ?? "bin";
   const uniqueId = Math.random().toString(36).slice(2, 9);
   return `${userId}/${Date.now()}_${uniqueId}.${ext}`;
 }
@@ -73,7 +77,7 @@ export async function uploadFile(
     .upload(path, arrayBuffer, { contentType, upsert: false });
 
   if (error) {
-    AppLogger.error(TAG, 'Storage upload failed', error);
+    AppLogger.error(TAG, "Storage upload failed", error);
     throw new Error(error.message);
   }
   onProgress?.(80);
@@ -87,7 +91,7 @@ export async function uploadFile(
 // ─── Background job types ────────────────────────────────────────────────────
 
 export interface PostUploadJob {
-  type: 'post' | 'short';
+  type: "post" | "short";
   jobId: string;
   userId: string;
   text: string;
@@ -96,12 +100,12 @@ export interface PostUploadJob {
 }
 
 export interface StoryUploadJob {
-  type: 'story';
+  type: "story";
   jobId: string;
   userId: string;
   caption: string;
   mediaUri: string;
-  visibility?: 'public' | 'followers' | 'close_friends';
+  visibility?: "public" | "followers" | "close_friends";
 }
 
 // ─── Background runners (fire-and-forget) ────────────────────────────────────
@@ -118,7 +122,7 @@ export async function runPostUploadJob(job: PostUploadJob): Promise<void> {
     let remoteUrl: string | null = null;
 
     if (job.mediaUri) {
-      const bucket: UploadBucket = job.isShort ? 'shorts' : 'zap_media';
+      const bucket: UploadBucket = job.isShort ? "shorts" : "zap_media";
       remoteUrl = await uploadFile(
         job.mediaUri,
         job.userId,
@@ -139,7 +143,7 @@ export async function runPostUploadJob(job: PostUploadJob): Promise<void> {
     store.setDone(job.jobId);
     AppLogger.info(TAG, `Post job ${job.jobId} done`);
   } catch (e: any) {
-    const msg = e?.message ?? 'Upload failed';
+    const msg = e?.message ?? "Upload failed";
     store.setError(job.jobId, msg);
     AppLogger.error(TAG, `Post job ${job.jobId} failed`, e);
   }
@@ -157,7 +161,7 @@ export async function runStoryUploadJob(job: StoryUploadJob): Promise<void> {
     const remoteUrl = await uploadFile(
       job.mediaUri,
       job.userId,
-      'stories',
+      "stories",
       (pct) => store.setUploading(job.jobId, Math.round(pct * 0.8)),
     );
 
@@ -167,13 +171,13 @@ export async function runStoryUploadJob(job: StoryUploadJob): Promise<void> {
       userId: job.userId,
       caption: job.caption,
       mediaUrl: remoteUrl,
-      visibility: job.visibility ?? 'public',
+      visibility: job.visibility ?? "public",
     });
 
     store.setDone(job.jobId);
     AppLogger.info(TAG, `Story job ${job.jobId} done`);
   } catch (e: any) {
-    const msg = e?.message ?? 'Upload failed';
+    const msg = e?.message ?? "Upload failed";
     store.setError(job.jobId, msg);
     AppLogger.error(TAG, `Story job ${job.jobId} failed`, e);
   }
@@ -186,7 +190,7 @@ export async function runStoryUploadJob(job: StoryUploadJob): Promise<void> {
 export async function uploadProfileImageFile(
   localUri: string,
   userId: string,
-  bucket: 'profile_pictures' | 'cover_photos',
+  bucket: "profile_pictures" | "cover_photos",
 ): Promise<string> {
   return uploadFile(localUri, userId, bucket);
 }

@@ -95,6 +95,8 @@ export default function ShortsScreen() {
           viewabilityConfig={viewConfig.current}
           onEndReached={loadMoreShorts}
           onEndReachedThreshold={2}
+          scrollIndicatorInsets={{ bottom: 0 }}
+          automaticallyAdjustsScrollIndicatorInsets={false}
           renderItem={({ item, index }) => (
             <View style={{ height: itemH }}>
               <ShortVideoContainer

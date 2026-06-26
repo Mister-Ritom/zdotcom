@@ -84,7 +84,7 @@ export default function SearchScreen() {
                   {item.isVerified && <Text style={{ color: ACCENT }}> ✓</Text>}
                 </Text>
                 <Text style={styles.resultUsername}>@{item.username}</Text>
-                {item.bio && (
+                {!!item.bio && (
                   <Text style={styles.resultBio} numberOfLines={1}>{item.bio}</Text>
                 )}
               </View>

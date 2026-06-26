@@ -137,7 +137,7 @@ export default function ProfileScreen() {
               </Text>
               <Text style={styles.username}>@{profile.username}</Text>
 
-              {profile.bio && <Text style={[styles.bio, { color: isDark ? '#D4D4D8' : '#3F3F46' }]}>{profile.bio}</Text>}
+              {!!profile.bio && <Text style={[styles.bio, { color: isDark ? '#D4D4D8' : '#3F3F46' }]}>{profile.bio}</Text>}
 
               {/* Follow counters */}
               <View style={styles.statsRow}>

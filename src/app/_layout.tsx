@@ -9,21 +9,60 @@
  *  4. Route guard: redirect unauthenticated → (auth), authenticated → (tabs)
  */
 
-import { useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Stack, ThemeProvider, DarkTheme, DefaultTheme } from 'expo-router';
-import * as SplashScreen from 'expo-splash-screen';
-import { StatusBar } from 'expo-status-bar';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider, useRouter, useSegments } from "expo-router";
+import * as SplashScreen from "expo-splash-screen";
+import { StatusBar } from "expo-status-bar";
+import { useEffect } from "react";
+import { Platform, StyleSheet, View } from "react-native";
 
-import { useAuthStore, configureGoogleSignIn } from '@/stores/useAuthStore';
-import UploadStatusBanner from '@/components/upload/UploadStatusBanner';
+import UploadStatusBanner from "@/components/upload/UploadStatusBanner";
+import { configureGoogleSignIn, useAuthStore } from "@/stores/useAuthStore";
+import { useSettingsStore } from "@/stores/useSettingsStore";
 
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 
 // Keep the splash screen visible until auth resolves
 SplashScreen.preventAutoHideAsync();
+
+function InitialLayout() {
+  const { user, isInitialized } = useAuthStore();
+  const hasSeenOnboarding = useSettingsStore((s) => s.hasSeenOnboarding);
+  const segments = useSegments();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isInitialized) return;
+
+    const inAuthGroup = (segments[0] as string) === "(auth)";
+
+    if (!user) {
+      // Redirect to login if they are not in the auth group
+      if (!inAuthGroup) {
+        if (hasSeenOnboarding) {
+          router.replace("/(auth)/login");
+        } else {
+          router.replace("/(auth)/onboarding");
+        }
+      }
+    } else {
+      // Redirect to tabs if they are in the auth group or at root
+      const atRoot = !segments[0] || (segments[0] as string) === "index";
+      if (inAuthGroup || atRoot) {
+        router.replace("/(tabs)");
+      }
+    }
+  }, [user, isInitialized, segments, hasSeenOnboarding, router]);
+
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="index" />
+      <Stack.Screen name="(auth)" />
+      <Stack.Screen name="(tabs)" />
+    </Stack>
+  );
+}
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -39,22 +78,18 @@ export default function RootLayout() {
   }, [initialize]);
 
   useEffect(() => {
-    if (isInitialized) {
+    if (isInitialized && Platform.OS !== "web") {
       SplashScreen.hideAsync();
     }
   }, [isInitialized]);
 
   return (
     <GestureHandlerRootView style={styles.root}>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
         <BottomSheetModalProvider>
-          <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} />
+          <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
           <View style={styles.root}>
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="index" />
-              <Stack.Screen name="(auth)" />
-              <Stack.Screen name="(tabs)" />
-            </Stack>
+            <InitialLayout />
             {/* Global upload progress banner — floats above all screens */}
             <UploadStatusBanner />
           </View>
@@ -67,4 +102,3 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   root: { flex: 1 },
 });
-

@@ -1,9 +1,3 @@
-/**
- * Home Feed Screen — Phase 3
- * Two tabs: Following (with Stories rail) and For You
- * Features: Profile side drawer, messages navigation, creation FAB.
- */
-
 import { Avatar } from "@/components/common/Avatar";
 import { FeedSkeleton } from "@/components/feed/FeedSkeleton";
 import { ZapCardContainer } from "@/components/feed/ZapCardContainer";
@@ -24,7 +18,6 @@ import {
   Mail,
   Monitor,
   Moon,
-  Plus,
   Settings,
   Sun,
   Zap,
@@ -33,7 +26,6 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
-  FlatList,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -152,18 +144,21 @@ function ZapFeed({
 
   if (zaps.length === 0 && isLoading) {
     return (
-      <FlatList
+      <Animated.FlatList
         data={[1, 2, 3, 4, 5]}
         keyExtractor={(i) => String(i)}
         contentContainerStyle={styles.listContent}
         ListHeaderComponent={header}
         renderItem={() => <FeedSkeleton />}
+        scrollIndicatorInsets={{ bottom: 0 }}
+        automaticallyAdjustsScrollIndicatorInsets={false}
+        contentInsetAdjustmentBehavior="automatic"
       />
     );
   }
 
   return (
-    <FlatList
+    <Animated.FlatList
       data={zaps}
       keyExtractor={(z) => z.id}
       contentContainerStyle={styles.listContent}
@@ -203,6 +198,9 @@ function ZapFeed({
       onEndReachedThreshold={0.6}
       renderItem={({ item }) => <ZapCardContainer zap={item} />}
       showsVerticalScrollIndicator={false}
+      scrollIndicatorInsets={{ bottom: 0 }}
+      automaticallyAdjustsScrollIndicatorInsets={false}
+      contentInsetAdjustmentBehavior="automatic"
     />
   );
 }
@@ -328,15 +326,6 @@ export default function HomeScreen() {
             emptyMessage="No posts yet. Be the first to share something amazing!"
           />
         )}
-
-        {/* Floating Action Button */}
-        <TouchableOpacity
-          style={styles.fab}
-          activeOpacity={0.8}
-          onPress={() => router.push("/creation")}
-        >
-          <Plus size={24} color="#FFF" />
-        </TouchableOpacity>
       </SafeAreaView>
 
       {/* Drawer Overlay Backdrop */}
@@ -557,22 +546,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   footerPill: { height: 8, borderRadius: 4 },
-  fab: {
-    position: "absolute",
-    right: 16,
-    bottom: 16,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: ACCENT,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.27,
-    shadowRadius: 4.65,
-    elevation: 6,
-  },
   // Drawer Styles
   drawerBackdrop: {
     flex: 1,
