@@ -78,7 +78,7 @@ export function ShortVideoPlayer({
     }
     hideTimerRef.current = setTimeout(() => {
       setTempVisible(false);
-    }, 2200); // Hide after 2.2 seconds
+    }, 1500); // Hide after 1.5 seconds
   }, []);
 
   const player = useVideoPlayer(videoUrl ?? null, (p) => {
