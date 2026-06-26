@@ -164,10 +164,7 @@ export function ShortVideoPlayer({
     });
   }, [zap.id]);
 
-  if (!videoUrl) {
-    console.log('[ShortVideoPlayer] ❌ no videoUrl for zap:', zap.id);
-    return null;
-  }
+  if (!videoUrl) return null;
 
   const shouldPlay = isActive && !manualPaused;
 
@@ -175,9 +172,6 @@ export function ShortVideoPlayer({
     <View
       style={styles.container}
       onMouseEnter={isWeb ? showControlsTemporarily : undefined}
-      onLayout={(e) =>
-        console.log('[ShortVideoPlayer] container layout — h:', e.nativeEvent.layout.height, '| w:', e.nativeEvent.layout.width)
-      }
     >
       {/* Video */}
       <Pressable style={styles.videoPressable} onPress={togglePlayPause}>

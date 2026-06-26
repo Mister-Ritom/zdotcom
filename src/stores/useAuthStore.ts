@@ -14,8 +14,8 @@
 
 import { supabase } from "@/services/supabase";
 import { AppLogger } from "@/utils/logger";
-import { GoogleSignin } from "@react-native-google-signin/google-signin";
 import { type Session, type User } from "@supabase/supabase-js";
+import Constants, { ExecutionEnvironment } from "expo-constants";
 import { Platform } from "react-native";
 import { create } from "zustand";
 
@@ -31,6 +31,16 @@ const GOOGLE_ANDROID_CLIENT_ID =
  * Call once at app startup (inside root _layout.tsx) to configure Google Sign-In.
  */
 export function configureGoogleSignIn() {
+  const isExpoGo =
+    Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+  if (isExpoGo) {
+    AppLogger.warn(
+      "AuthStore",
+      "Google Sign-In is not supported in Expo Go. Use a development build instead.",
+    );
+    return;
+  }
+  const { GoogleSignin } = require("@react-native-google-signin/google-signin");
   GoogleSignin.configure({
     webClientId: GOOGLE_WEB_CLIENT_ID,
     iosClientId:

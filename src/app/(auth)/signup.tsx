@@ -14,6 +14,7 @@ import { storage } from "@/stores/storage";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { AppLogger } from "@/utils/logger";
 import { useRouter } from "expo-router";
+import { getCleanErrorMessage } from "@/utils/errors";
 import { AtSign, Eye, EyeOff, Lock, Mail, User } from "lucide-react-native";
 import { useRef, useState } from "react";
 import {
@@ -117,9 +118,8 @@ export default function SignUpScreen() {
       }
       // If no verification needed, auth state change drives the redirect automatically
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
       AppLogger.error("SignUpScreen", "Sign up failed", { error: e });
-      Alert.alert("Sign Up Failed", msg);
+      Alert.alert("Sign Up Failed", getCleanErrorMessage(e));
     } finally {
       setLocalLoading(false);
     }
@@ -131,9 +131,8 @@ export default function SignUpScreen() {
       await signInWithGoogle();
       AppLogger.info("SignUpScreen", "Google sign up successful");
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
       AppLogger.error("SignUpScreen", "Google sign up failed", { error: e });
-      Alert.alert("Google Sign In Failed", msg);
+      Alert.alert("Google Sign In Failed", getCleanErrorMessage(e));
     } finally {
       setLocalLoading(false);
     }

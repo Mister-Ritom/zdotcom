@@ -17,6 +17,7 @@ import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { AppLogger } from '@/utils/logger';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { getCleanErrorMessage } from '@/utils/errors';
 
 const ACCENT = '#208AEF';
 
@@ -64,7 +65,7 @@ export default function LoginScreen() {
         return;
       }
       AppLogger.error('LoginScreen', 'Email sign in failed', { error: e });
-      Alert.alert('Sign In Failed', msg);
+      Alert.alert('Sign In Failed', getCleanErrorMessage(e));
     } finally {
       setLocalLoading(false);
     }
@@ -76,9 +77,8 @@ export default function LoginScreen() {
       await signInWithGoogle();
       AppLogger.info('LoginScreen', 'Google sign in successful');
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
       AppLogger.error('LoginScreen', 'Google sign in failed', { error: e });
-      Alert.alert('Google Sign In Failed', msg);
+      Alert.alert('Google Sign In Failed', getCleanErrorMessage(e));
     } finally {
       setLocalLoading(false);
     }

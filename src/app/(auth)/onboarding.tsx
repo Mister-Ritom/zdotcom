@@ -10,7 +10,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { useRouter } from "expo-router";
 import { Compass, Share2, Users } from "lucide-react-native";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   FlatList,
   Platform,
@@ -67,7 +67,9 @@ function Dot({ index, activeIndex }: { index: number; activeIndex: number }) {
   const isActive = index === activeIndex;
   const width = useSharedValue(isActive ? 24 : 8);
 
-  width.value = withTiming(isActive ? 24 : 8, { duration: 300 });
+  useEffect(() => {
+    width.value = withTiming(isActive ? 24 : 8, { duration: 300 });
+  }, [isActive, width]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     width: width.value,
