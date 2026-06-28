@@ -11,8 +11,8 @@ import { createClient } from "@supabase/supabase-js";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 
-const SUPABASE_URL = "https://acrjeiyscacdtyxxsxid.supabase.co";
-const SUPABASE_ANON_KEY =
+export const SUPABASE_URL = "https://acrjeiyscacdtyxxsxid.supabase.co";
+export const SUPABASE_ANON_KEY =
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFjcmplaXlzY2FjZHR5eHhzeGlkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAxNjg0MzMsImV4cCI6MjA4NTc0NDQzM30.mCnA44xS3a1zLFjYYbbMBwdMVCLQYZ7yMPiWsfJeCms";
 
 /**

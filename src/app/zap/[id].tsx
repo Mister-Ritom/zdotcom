@@ -1,26 +1,38 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Send, MessageCircle } from 'lucide-react-native';
-import { useAuthStore } from '@/stores/useAuthStore';
-import { zapService } from '@/services/zapService';
-import { type ZapModel } from '@/types/models';
-import { ZapCardContainer } from '@/components/feed/ZapCardContainer';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { DesktopLayout } from "@/components/DesktopLayout";
+import { ZapCardContainer } from "@/components/feed/ZapCardContainer";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { zapService } from "@/services/zapService";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { type ZapModel } from "@/types/models";
+import { router, useLocalSearchParams } from "expo-router";
+import { ArrowLeft, MessageCircle, Send } from "lucide-react-native";
+import { useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-const ACCENT = '#208AEF';
+const ACCENT = "#208AEF";
 
 export default function ZapDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const isDark = useColorScheme() === 'dark';
+  const isDark = useColorScheme() === "dark";
   const { user: currentUser } = useAuthStore();
 
   const [zap, setZap] = useState<ZapModel | null>(null);
   const [replies, setReplies] = useState<ZapModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [replyText, setReplyText] = useState('');
+  const [replyText, setReplyText] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
@@ -64,7 +76,7 @@ export default function ZapDetailScreen() {
     if (!replyText.trim() || !currentUser?.id || !id) return;
     setSubmitting(true);
     const textToSend = replyText.trim();
-    setReplyText('');
+    setReplyText("");
     inputRef.current?.blur();
 
     try {
@@ -85,123 +97,168 @@ export default function ZapDetailScreen() {
         setZap({ ...zap, repliesCount: zap.repliesCount + 1 });
       }
     } catch {
-      Alert.alert('Error', 'Failed to publish reply');
+      Alert.alert("Error", "Failed to publish reply");
       setReplyText(textToSend); // Restore text on failure
     } finally {
       setSubmitting(false);
     }
   };
 
-  const bg = isDark ? '#09090B' : '#FFF';
-  const border = isDark ? '#1C1917' : '#F4F4F5';
-  const textColor = isDark ? '#FFF' : '#000';
+  const bg = isDark ? "#09090B" : "#FFF";
+  const border = isDark ? "#1C1917" : "#F4F4F5";
+  const textColor = isDark ? "#FFF" : "#000";
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: bg }]} edges={['top']}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
-            <ArrowLeft size={22} color={textColor} />
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: textColor }]}>Zap</Text>
-          <View style={{ width: 28 }} />
-        </View>
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={ACCENT} />
-        </View>
+      <SafeAreaView
+        style={[styles.container, { backgroundColor: bg }]}
+        edges={["top"]}
+      >
+        <DesktopLayout>
+          <View style={styles.header}>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.iconBtn}
+            >
+              <ArrowLeft size={22} color={textColor} />
+            </TouchableOpacity>
+            <Text style={[styles.headerTitle, { color: textColor }]}>Zap</Text>
+            <View style={{ width: 28 }} />
+          </View>
+          <View style={styles.center}>
+            <ActivityIndicator size="large" color={ACCENT} />
+          </View>
+        </DesktopLayout>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: bg }]} edges={['top', 'bottom']}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        {/* Header */}
-        <View style={[styles.header, { borderBottomColor: border }]}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
-            <ArrowLeft size={22} color={textColor} />
-          </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: textColor }]}>Thread</Text>
-          <View style={{ width: 28 }} />
-        </View>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: bg }]}
+      edges={["top", "bottom"]}
+    >
+      <DesktopLayout>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+        >
+          {/* Header */}
+          <View style={[styles.header, { borderBottomColor: border }]}>
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={styles.iconBtn}
+            >
+              <ArrowLeft size={22} color={textColor} />
+            </TouchableOpacity>
+            <Text style={[styles.headerTitle, { color: textColor }]}>
+              Thread
+            </Text>
+            <View style={{ width: 28 }} />
+          </View>
 
-        {/* Content list */}
-        <FlatList
-          data={replies}
-          keyExtractor={(item) => item.id}
-          onRefresh={handleRefresh}
-          refreshing={refreshing}
-          ListHeaderComponent={
-            <View>
-              {zap ? (
-                // Disable navigation to detail screen since we are already on it
-                <ZapCardContainer zap={zap} onPress={() => {}} />
-              ) : (
-                <View style={styles.notFound}>
-                  <Text style={{ color: '#888' }}>Zap not found</Text>
+          {/* Content list */}
+          <FlatList
+            data={replies}
+            keyExtractor={(item) => item.id}
+            onRefresh={handleRefresh}
+            refreshing={refreshing}
+            ListHeaderComponent={
+              <View>
+                {zap ? (
+                  // Disable navigation to detail screen since we are already on it
+                  <ZapCardContainer zap={zap} onPress={() => {}} />
+                ) : (
+                  <View style={styles.notFound}>
+                    <Text style={{ color: "#888" }}>Zap not found</Text>
+                  </View>
+                )}
+                <View
+                  style={[
+                    styles.sectionTitleRow,
+                    { borderBottomColor: border },
+                  ]}
+                >
+                  <Text style={[styles.sectionTitle, { color: textColor }]}>
+                    Replies
+                  </Text>
                 </View>
-              )}
-              <View style={[styles.sectionTitleRow, { borderBottomColor: border }]}>
-                <Text style={[styles.sectionTitle, { color: textColor }]}>Replies</Text>
               </View>
-            </View>
-          }
-          renderItem={({ item }) => <ZapCardContainer zap={item} />}
-          ListEmptyComponent={
-            <View style={styles.empty}>
-              <MessageCircle size={36} color={isDark ? '#27272A' : '#E4E4E7'} strokeWidth={1.5} />
-              <Text style={styles.emptyText}>No replies yet. Be the first to reply!</Text>
-            </View>
-          }
-        />
-
-        {/* Reply input composer */}
-        <View style={[styles.composer, { borderTopColor: border, backgroundColor: isDark ? '#09090B' : '#FFF' }]}>
-          <TextInput
-            ref={inputRef}
-            style={[styles.input, { color: textColor, backgroundColor: isDark ? '#18181B' : '#F4F4F5' }]}
-            placeholder="Write a reply..."
-            placeholderTextColor="#666"
-            value={replyText}
-            onChangeText={setReplyText}
-            multiline
-            maxLength={280}
+            }
+            renderItem={({ item }) => <ZapCardContainer zap={item} />}
+            ListEmptyComponent={
+              <View style={styles.empty}>
+                <MessageCircle
+                  size={36}
+                  color={isDark ? "#27272A" : "#E4E4E7"}
+                  strokeWidth={1.5}
+                />
+                <Text style={styles.emptyText}>
+                  No replies yet. Be the first to reply!
+                </Text>
+              </View>
+            }
           />
-          <TouchableOpacity
-            onPress={handleSendReply}
-            disabled={!replyText.trim() || submitting}
-            style={[styles.sendBtn, { opacity: replyText.trim() ? 1 : 0.5 }]}
+
+          {/* Reply input composer */}
+          <View
+            style={[
+              styles.composer,
+              {
+                borderTopColor: border,
+                backgroundColor: isDark ? "#09090B" : "#FFF",
+              },
+            ]}
           >
-            {submitting ? (
-              <ActivityIndicator size="small" color="#FFF" />
-            ) : (
-              <Send size={18} color="#FFF" />
-            )}
-          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
+            <TextInput
+              ref={inputRef}
+              style={[
+                styles.input,
+                {
+                  color: textColor,
+                  backgroundColor: isDark ? "#18181B" : "#F4F4F5",
+                },
+              ]}
+              placeholder="Write a reply..."
+              placeholderTextColor="#666"
+              value={replyText}
+              onChangeText={setReplyText}
+              multiline
+              maxLength={280}
+            />
+            <TouchableOpacity
+              onPress={handleSendReply}
+              disabled={!replyText.trim() || submitting}
+              style={[styles.sendBtn, { opacity: replyText.trim() ? 1 : 0.5 }]}
+            >
+              {submitting ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
+                <Send size={18} color="#FFF" />
+              )}
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </DesktopLayout>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  center: { flex: 1, alignItems: "center", justifyContent: "center" },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: 'transparent',
+    borderBottomColor: "transparent",
   },
   iconBtn: { padding: 4 },
-  headerTitle: { fontSize: 17, fontWeight: '700' },
-  notFound: { padding: 32, alignItems: 'center' },
+  headerTitle: { fontSize: 17, fontWeight: "700" },
+  notFound: { padding: 32, alignItems: "center" },
   sectionTitleRow: {
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -209,22 +266,22 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: "700",
   },
   empty: {
     padding: 60,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     gap: 8,
   },
   emptyText: {
-    color: '#888',
+    color: "#888",
     fontSize: 14,
-    textAlign: 'center',
+    textAlign: "center",
   },
   composer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 12,
     borderTopWidth: 1,
     gap: 10,
@@ -243,7 +300,7 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     backgroundColor: ACCENT,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

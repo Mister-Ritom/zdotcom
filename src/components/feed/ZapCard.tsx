@@ -1,9 +1,8 @@
 import { Avatar } from "@/components/common/Avatar";
+import { MediaCarousel } from "@/components/feed/MediaCarousel";
 import { ZapText } from "@/components/feed/ZapText";
-import { ZapVideoPlayer } from "@/components/feed/ZapVideoPlayer";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { type UserModel, type ZapModel } from "@/types/models";
-import { Image } from "expo-image";
 import {
   Bookmark,
   Ellipsis,
@@ -14,9 +13,8 @@ import {
   ShieldCheck,
   Zap,
 } from "lucide-react-native";
-import React, { useCallback, useState } from "react";
+import React, { useCallback } from "react";
 import {
-  Pressable,
   Share,
   StyleSheet,
   Text,
@@ -24,7 +22,6 @@ import {
   View,
 } from "react-native";
 
-const isVideo = (url: string) => url.toLowerCase().includes(".mp4");
 
 const ACCENT = "#208AEF";
 
@@ -75,7 +72,6 @@ export function ZapCard({
   const isDark = useColorScheme() === "dark";
   const hasMedia = zap.mediaUrls.length > 0;
   const hasText = zap.text.trim().length > 0;
-  const [imgIndex, setImgIndex] = useState(0);
 
   const handleShare = useCallback(async () => {
     await Share.share({ message: `Check this out on Z! z://zap/${zap.id}` });
@@ -85,140 +81,111 @@ export function ZapCard({
   const borderColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
 
   return (
-    <Pressable
-      onPress={onPress}
-      style={[styles.card, { backgroundColor: cardBg, borderColor }]}
-    >
-      {/* Header */}
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Avatar
-            uri={user?.profilePictureUrl}
-            name={user?.displayName ?? "?"}
-            size={42}
-          />
-          <View style={styles.headerText}>
-            <View style={styles.nameRow}>
+    <View style={[styles.card, { backgroundColor: cardBg, borderColor }]}>
+      {/* Header — tapping navigates to zap */}
+      <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <Avatar
+              uri={user?.profilePictureUrl}
+              name={user?.displayName ?? "?"}
+              size={42}
+            />
+            <View style={styles.headerText}>
+              <View style={styles.nameRow}>
+                <Text
+                  style={[
+                    styles.displayName,
+                    { color: isDark ? "#F4F4F5" : "#18181B" },
+                  ]}
+                >
+                  {user?.displayName ?? "..."}
+                </Text>
+                {user?.isVerified && (
+                  <ShieldCheck
+                    size={14}
+                    color={ACCENT}
+                    strokeWidth={2.5}
+                    style={{ marginLeft: 4 }}
+                  />
+                )}
+                <Text
+                  style={[
+                    styles.timeAgo,
+                    { color: isDark ? "#71717A" : "#A1A1AA" },
+                  ]}
+                >
+                  {"  /  "}
+                  {timeAgo(zap.createdAt)}
+                </Text>
+              </View>
               <Text
                 style={[
-                  styles.displayName,
-                  { color: isDark ? "#F4F4F5" : "#18181B" },
+                  styles.username,
+                  { color: isDark ? "#52525B" : "#A1A1AA" },
                 ]}
               >
-                {user?.displayName ?? "..."}
-              </Text>
-              {user?.isVerified && (
-                <ShieldCheck
-                  size={14}
-                  color={ACCENT}
-                  strokeWidth={2.5}
-                  style={{ marginLeft: 4 }}
-                />
-              )}
-              <Text
-                style={[
-                  styles.timeAgo,
-                  { color: isDark ? "#71717A" : "#A1A1AA" },
-                ]}
-              >
-                {"  /  "}
-                {timeAgo(zap.createdAt)}
+                @{user?.username ?? "..."}
+                {zap.isThread && <Text style={{ color: ACCENT }}> # thread</Text>}
               </Text>
             </View>
-            <Text
-              style={[
-                styles.username,
-                { color: isDark ? "#52525B" : "#A1A1AA" },
-              ]}
-            >
-              @{user?.username ?? "..."}
-              {zap.isThread && <Text style={{ color: ACCENT }}> # thread</Text>}
-            </Text>
           </View>
+          <TouchableOpacity hitSlop={8} onPress={onOptions}>
+            <Ellipsis size={18} color={isDark ? "#52525B" : "#A1A1AA"} />
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity hitSlop={8} onPress={onOptions}>
-          <Ellipsis size={18} color={isDark ? "#52525B" : "#A1A1AA"} />
-        </TouchableOpacity>
-      </View>
+      </TouchableOpacity>
 
       {/* Media */}
-      {hasMedia ? (
-        <View
-          style={[
-            styles.mediaContainer,
-            { aspectRatio: zap.isShort ? 9 / 16 : 4 / 3 },
-          ]}
-        >
-          {isVideo(zap.mediaUrls[imgIndex]) ? (
-            <ZapVideoPlayer uri={zap.mediaUrls[imgIndex]} />
-          ) : (
-            <Image
-              source={{ uri: zap.mediaUrls[imgIndex] }}
-              style={styles.mediaImage}
-              contentFit="cover"
-              transition={300}
-            />
-          )}
-          {zap.mediaUrls.length > 1 && (
-            <View style={styles.paginationDots}>
-              {zap.mediaUrls.map((_, i) => (
-                <View
-                  key={i}
-                  style={[
-                    styles.dot,
-                    {
-                      backgroundColor:
-                        i === imgIndex ? "#fff" : "rgba(255,255,255,0.4)",
-                    },
-                  ]}
-                />
-              ))}
-            </View>
-          )}
-        </View>
-      ) : (
-        // Text-only big block
-        <View
-          style={[
-            styles.textBlock,
-            {
-              backgroundColor: isDark
-                ? "linear-gradient(135deg, #0F172A 0%, #000 100%)"
-                : undefined,
-            },
-          ]}
-        >
+      {hasMedia && (
+        <MediaCarousel mediaUrls={zap.mediaUrls} />
+      )}
+
+      {/* Text-only big block — tappable */}
+      {!hasMedia && (
+        <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
           <View
             style={[
-              styles.textBlockInner,
+              styles.textBlock,
               {
-                backgroundColor: isDark ? "#0F172A" : "#EFF6FF",
+                backgroundColor: isDark
+                  ? "linear-gradient(135deg, #0F172A 0%, #000 100%)"
+                  : undefined,
               },
             ]}
           >
-            <Zap
-              size={36}
-              color={ACCENT}
-              strokeWidth={2.5}
-              style={{ marginBottom: 12 }}
-            />
-            <Text
+            <View
               style={[
-                styles.textBlockQuote,
-                { color: isDark ? "#93C5FD" : "#1D4ED8" },
+                styles.textBlockInner,
+                {
+                  backgroundColor: isDark ? "#0F172A" : "#EFF6FF",
+                },
               ]}
             >
-              &quot;{zap.text}&quot;
-            </Text>
+              <Zap
+                size={36}
+                color={ACCENT}
+                strokeWidth={2.5}
+                style={{ marginBottom: 12 }}
+              />
+              <Text
+                style={[
+                  styles.textBlockQuote,
+                  { color: isDark ? "#93C5FD" : "#1D4ED8" },
+                ]}
+              >
+                &quot;{zap.text}&quot;
+              </Text>
+            </View>
           </View>
-        </View>
+        </TouchableOpacity>
       )}
 
-      {/* Caption / Text if hasMedia */}
+      {/* Caption — tapping navigates to zap */}
       {hasMedia && hasText && (
-        <View style={styles.caption}>
+        <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={styles.caption}>
           <ZapText text={zap.text} />
-        </View>
+        </TouchableOpacity>
       )}
 
       {/* Actions */}
@@ -289,7 +256,7 @@ export function ZapCard({
           </TouchableOpacity>
         </View>
       </View>
-    </Pressable>
+    </View>
   );
 }
 

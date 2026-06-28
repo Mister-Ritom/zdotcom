@@ -5,9 +5,10 @@ import { Play } from 'lucide-react-native';
 
 interface Props {
   uri: string;
+  onAspectRatioCalculated?: (ratio: number) => void;
 }
 
-export function ZapVideoPlayer({ uri }: Props) {
+export function ZapVideoPlayer({ uri, onAspectRatioCalculated }: Props) {
   const [manualPaused, setManualPaused] = useState(true);
 
   const player = useVideoPlayer(uri, (p) => {
@@ -15,6 +16,28 @@ export function ZapVideoPlayer({ uri }: Props) {
     p.muted = true; // Auto-play muted, or don't autoplay
     p.pause();
   });
+
+  useEffect(() => {
+    if (!player || !onAspectRatioCalculated) return;
+    
+    const checkSize = (videoTrack: any) => {
+      if (videoTrack?.size) {
+        const { width, height } = videoTrack.size;
+        if (width > 0 && height > 0) {
+          onAspectRatioCalculated(width / height);
+        }
+      }
+    };
+    
+    const subscription = player.addListener('videoTrackChange', (payload) => {
+      checkSize(payload.videoTrack);
+    });
+    
+    // Check immediately in case it's already loaded
+    checkSize(player.videoTrack);
+
+    return () => subscription.remove();
+  }, [player, onAspectRatioCalculated]);
 
   useEffect(() => {
     if (!player) return;

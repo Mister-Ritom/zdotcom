@@ -8,6 +8,7 @@ type LogData = Record<string, unknown>;
 const formatMessage = (tag: string, message: string, extra?: unknown): string => {
   const base = `[${tag}] ${message}`;
   if (extra == null) return base;
+  if (extra instanceof Error) return `${base} ${extra.message}\n${extra.stack || ""}`;
   try { return `${base} ${JSON.stringify(extra)}`; } catch { return `${base} [unstringifiable]`; }
 };
 

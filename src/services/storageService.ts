@@ -13,10 +13,12 @@
  */
 
 import { storyService } from "@/services/storyService";
-import { supabase } from "@/services/supabase";
+import { supabase, SUPABASE_ANON_KEY, SUPABASE_URL } from "@/services/supabase";
 import { zapService } from "@/services/zapService";
 import { useUploadStore } from "@/stores/useUploadStore";
 import { AppLogger } from "@/utils/logger";
+import { File, UploadType } from "expo-file-system";
+import { Platform } from "react-native";
 
 const TAG = "StorageService";
 
@@ -67,18 +69,56 @@ export async function uploadFile(
   AppLogger.info(TAG, `Uploading → ${bucket}/${path} (${contentType})`);
   onProgress?.(5);
 
-  const response = await fetch(localUri);
-  if (!response.ok) throw new Error(`Cannot read local file: ${localUri}`);
-  const arrayBuffer = await response.arrayBuffer();
-  onProgress?.(40);
+  let errorResult: unknown = null;
 
-  const { error } = await supabase.storage
-    .from(bucket)
-    .upload(path, arrayBuffer, { contentType, upsert: false });
+  if (Platform.OS === "web") {
+    try {
+      const response = await fetch(localUri);
+      if (!response.ok) throw new Error(`Cannot read local file: ${localUri}`);
+      const uploadData = await response.blob();
+      onProgress?.(40);
+      const { error } = await supabase.storage
+        .from(bucket)
+        .upload(path, uploadData, { contentType, upsert: false });
+      if (error) errorResult = error;
+    } catch (e) {
+      errorResult = e;
+    }
+  } else {
+    try {
+      // Supabase storage needs auth token
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      const token = session?.access_token || SUPABASE_ANON_KEY;
 
-  if (error) {
-    AppLogger.error(TAG, "Storage upload failed", error);
-    throw new Error(error.message);
+      const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${bucket}/${path}`;
+      const file = new File(localUri);
+      const uploadResult = await file.upload(uploadUrl, {
+        httpMethod: "POST",
+        uploadType: UploadType.BINARY_CONTENT,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          apikey: SUPABASE_ANON_KEY,
+          "Content-Type": contentType,
+        },
+      });
+
+      if (uploadResult.status !== 200 && uploadResult.status !== 201) {
+        errorResult = new Error(
+          `Upload failed with status ${uploadResult.status}: ${uploadResult.body}`,
+        );
+      }
+    } catch (e) {
+      errorResult = e;
+    }
+  }
+
+  if (errorResult) {
+    AppLogger.error(TAG, "Storage upload failed", errorResult);
+    throw errorResult instanceof Error
+      ? errorResult
+      : new Error(String(errorResult));
   }
   onProgress?.(80);
 
@@ -95,7 +135,7 @@ export interface PostUploadJob {
   jobId: string;
   userId: string;
   text: string;
-  mediaUri: string | null;
+  mediaUris: string[] | null;
   isShort: boolean;
 }
 
@@ -118,34 +158,89 @@ export async function runPostUploadJob(job: PostUploadJob): Promise<void> {
   const store = useUploadStore.getState();
   store.setUploading(job.jobId, 0);
 
-  try {
-    let remoteUrl: string | null = null;
+  AppLogger.info(
+    TAG,
+    `Starting post upload job [${job.jobId}] for user [${job.userId}]. Media count: ${job.mediaUris?.length ?? 0}`,
+  );
 
-    if (job.mediaUri) {
+  try {
+    let remoteUrls: string[] = [];
+
+    if (job.mediaUris && job.mediaUris.length > 0) {
       const bucket: UploadBucket = job.isShort ? "shorts" : "zap_media";
-      remoteUrl = await uploadFile(
-        job.mediaUri,
-        job.userId,
-        bucket,
-        (pct) => store.setUploading(job.jobId, Math.round(pct * 0.8)), // 0-80% for upload
+      const totalFiles = job.mediaUris.length;
+      const progressArray = new Array(totalFiles).fill(0);
+
+      AppLogger.info(
+        TAG,
+        `Uploading ${totalFiles} media files in parallel to bucket '${bucket}' for job [${job.jobId}]`,
+      );
+
+      // Map each URI to an upload promise
+      const uploadPromises = job.mediaUris.map(async (uri, index) => {
+        try {
+          AppLogger.info(
+            TAG,
+            `[Job ${job.jobId}] Starting upload of file ${index + 1}/${totalFiles}: ${uri}`,
+          );
+          const url = await uploadFile(uri, job.userId, bucket, (pct) => {
+            progressArray[index] = pct;
+            const sumProgress = progressArray.reduce((sum, p) => sum + p, 0);
+            const averageProgress = sumProgress / totalFiles;
+            // 0-80% of total progress is allocated for storage upload
+            const overallPct = Math.round(averageProgress * 0.8);
+            store.setUploading(job.jobId, overallPct);
+          });
+          AppLogger.info(
+            TAG,
+            `[Job ${job.jobId}] Successfully uploaded file ${index + 1}/${totalFiles}. Remote URL: ${url}`,
+          );
+          return url;
+        } catch (fileError: any) {
+          AppLogger.error(
+            TAG,
+            `[Job ${job.jobId}] Failed to upload file ${index + 1}/${totalFiles} (${uri})`,
+            fileError,
+          );
+          throw new Error(
+            `File ${index + 1} upload failed: ${fileError?.message || String(fileError)}`,
+          );
+        }
+      });
+
+      // Wait for all uploads to complete
+      remoteUrls = await Promise.all(uploadPromises);
+      AppLogger.info(
+        TAG,
+        `[Job ${job.jobId}] All ${totalFiles} uploads completed successfully. Remote URLs: ${JSON.stringify(remoteUrls)}`,
+      );
+    } else {
+      AppLogger.info(
+        TAG,
+        `[Job ${job.jobId}] No media files to upload. Proceeding with text-only post.`,
       );
     }
 
+    // Set progress to 85% before DB insertion
     store.setUploading(job.jobId, 85);
+    AppLogger.info(
+      TAG,
+      `[Job ${job.jobId}] Inserting database record for zap.`,
+    );
 
     await zapService.createZap({
       userId: job.userId,
       text: job.text,
-      mediaUrls: remoteUrl ? [remoteUrl] : [],
+      mediaUrls: remoteUrls,
       isShort: job.isShort,
     });
 
     store.setDone(job.jobId);
-    AppLogger.info(TAG, `Post job ${job.jobId} done`);
+    AppLogger.info(TAG, `Post job ${job.jobId} completed successfully`);
   } catch (e: any) {
     const msg = e?.message ?? "Upload failed";
     store.setError(job.jobId, msg);
-    AppLogger.error(TAG, `Post job ${job.jobId} failed`, e);
+    AppLogger.error(TAG, `Post job ${job.jobId} failed during execution`, e);
   }
 }
 
