@@ -44,8 +44,8 @@ export default function CreationScreen() {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes:
         activeTab === "short"
-          ? ImagePicker.MediaTypeOptions.Videos
-          : ImagePicker.MediaTypeOptions.Images,
+          ? ['videos']
+          : ['images'],
       quality: 0.85,
       allowsEditing: true,
     });
@@ -65,8 +65,8 @@ export default function CreationScreen() {
     const result = await ImagePicker.launchCameraAsync({
       mediaTypes:
         activeTab === "short"
-          ? ImagePicker.MediaTypeOptions.Videos
-          : ImagePicker.MediaTypeOptions.Images,
+          ? ['videos']
+          : ['images'],
       quality: 0.85,
     });
     if (!result.canceled && result.assets.length > 0) {
