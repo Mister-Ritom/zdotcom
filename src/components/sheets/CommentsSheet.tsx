@@ -1,10 +1,12 @@
 import React, { forwardRef, useCallback, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
-import BottomSheet, { BottomSheetFlatList, BottomSheetBackdrop, BottomSheetTextInput, BottomSheetFooter } from '@gorhom/bottom-sheet';
+import { WebModal, ModalFlatList, ModalBackdrop, ModalTextInput, ModalFooter } from '../WebModal';
 import { zapService } from '@/services/zapService';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { Send } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { isDesktopWeb } from '@/utils/platform';
+import BottomSheet from '@gorhom/bottom-sheet';
 
 export interface CommentsSheetProps {
   postId: string;
@@ -41,7 +43,7 @@ export const CommentsSheet = forwardRef<BottomSheet, CommentsSheetProps>(({ post
   }, [onClose]);
 
   const renderBackdrop = useCallback(
-    (props: any) => <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} />,
+    (props: any) => <ModalBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} />,
     []
   );
 
@@ -61,9 +63,9 @@ export const CommentsSheet = forwardRef<BottomSheet, CommentsSheetProps>(({ post
 
   const renderFooter = useCallback(
     (props: any) => (
-      <BottomSheetFooter {...props} bottomInset={0}>
+      <ModalFooter {...props} bottomInset={0}>
         <View style={[styles.inputRow, { borderTopColor: isDark ? '#27272A' : '#E4E4E7', backgroundColor: isDark ? '#18181B' : '#FFFFFF' }]}>
-          <BottomSheetTextInput
+          <ModalTextInput
             style={[styles.input, { color: isDark ? '#FFF' : '#000', backgroundColor: isDark ? '#27272A' : '#F4F4F5' }]}
             placeholder="Add a comment..."
             placeholderTextColor={isDark ? '#A1A1AA' : '#71717A'}
@@ -78,13 +80,13 @@ export const CommentsSheet = forwardRef<BottomSheet, CommentsSheetProps>(({ post
             )}
           </TouchableOpacity>
         </View>
-      </BottomSheetFooter>
+      </ModalFooter>
     ),
     [text, isDark, submitting, handlePost]
   );
 
   return (
-    <BottomSheet
+    <WebModal
       ref={ref}
       index={-1}
       snapPoints={snapPoints}
@@ -97,10 +99,12 @@ export const CommentsSheet = forwardRef<BottomSheet, CommentsSheetProps>(({ post
       keyboardBehavior="interactive"
       keyboardBlurBehavior="restore"
       enablePanDownToClose
+      webTitle="Comments"
+      onWebClose={onClose}
     >
       <View style={styles.container}>
-        <Text style={[styles.title, { color: isDark ? '#FFF' : '#000' }]}>Comments</Text>
-        <BottomSheetFlatList
+        {!isDesktopWeb && <Text style={[styles.title, { color: isDark ? '#FFF' : '#000' }]}>Comments</Text>}
+        <ModalFlatList
           data={comments}
           keyExtractor={(item) => item.id}
           contentContainerStyle={[styles.listContent, { paddingBottom: 100 }]}
@@ -123,7 +127,7 @@ export const CommentsSheet = forwardRef<BottomSheet, CommentsSheetProps>(({ post
           )}
         />
       </View>
-    </BottomSheet>
+    </WebModal>
   );
 });
 

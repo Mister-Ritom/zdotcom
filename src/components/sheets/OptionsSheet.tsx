@@ -1,8 +1,9 @@
 import React, { forwardRef, useCallback, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import BottomSheet, { BottomSheetBackdrop, BottomSheetView } from '@gorhom/bottom-sheet';
+import { WebModal, ModalBackdrop, ModalView } from '../WebModal';
 import { AlertTriangle, Share2, Bookmark, XCircle } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import BottomSheet from '@gorhom/bottom-sheet';
 
 export interface OptionsSheetProps {
   onClose?: () => void;
@@ -19,7 +20,7 @@ export const OptionsSheet = forwardRef<BottomSheet, OptionsSheetProps>(({ onClos
   }, [onClose]);
 
   const renderBackdrop = useCallback(
-    (bp: any) => <BottomSheetBackdrop {...bp} disappearsOnIndex={-1} appearsOnIndex={0} />,
+    (bp: any) => <ModalBackdrop {...bp} disappearsOnIndex={-1} appearsOnIndex={0} />,
     []
   );
 
@@ -33,7 +34,7 @@ export const OptionsSheet = forwardRef<BottomSheet, OptionsSheetProps>(({ onClos
   const iconColor = isDark ? '#A1A1AA' : '#52525B';
 
   return (
-    <BottomSheet
+    <WebModal
       ref={ref}
       index={-1}
       snapPoints={snapPoints}
@@ -42,8 +43,10 @@ export const OptionsSheet = forwardRef<BottomSheet, OptionsSheetProps>(({ onClos
       backgroundStyle={{ backgroundColor: isDark ? '#18181B' : '#FFFFFF' }}
       handleIndicatorStyle={{ backgroundColor: isDark ? '#52525B' : '#A1A1AA' }}
       enablePanDownToClose
+      webTitle="Options"
+      onWebClose={onClose}
     >
-      <BottomSheetView style={styles.container}>
+      <ModalView style={styles.container}>
         <TouchableOpacity style={styles.option} onPress={close}>
           <Share2 size={22} color={iconColor} />
           <Text style={[styles.optionText, { color: textColor }]}>Share via...</Text>
@@ -61,8 +64,8 @@ export const OptionsSheet = forwardRef<BottomSheet, OptionsSheetProps>(({ onClos
           <XCircle size={22} color={iconColor} />
           <Text style={[styles.optionText, { color: textColor }]}>Cancel</Text>
         </TouchableOpacity>
-      </BottomSheetView>
-    </BottomSheet>
+      </ModalView>
+    </WebModal>
   );
 });
 

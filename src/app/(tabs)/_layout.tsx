@@ -1,6 +1,7 @@
 import { Colors } from "@/constants/theme";
 import { TabBarVisibilityContext } from "@/contexts/TabBarVisibilityContext";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useBreakpoint } from "@/hooks/useBreakpoint";
 import { NativeTabs } from "expo-router/unstable-native-tabs";
 import { useState } from "react";
 
@@ -8,6 +9,7 @@ export default function TabsLayout() {
   const scheme = useColorScheme();
   const colors = Colors[scheme];
   const [tabBarHidden, setTabBarHidden] = useState(false);
+  const { isDesktopWeb } = useBreakpoint();
 
   return (
     <TabBarVisibilityContext.Provider value={{ setTabBarHidden }}>
@@ -15,7 +17,7 @@ export default function TabsLayout() {
         backgroundColor={colors.background}
         indicatorColor={colors.backgroundElement}
         labelStyle={{ selected: { color: colors.text } }}
-        hidden={tabBarHidden}
+        hidden={tabBarHidden || isDesktopWeb}
         minimizeBehavior="onScrollDown"
       >
         <NativeTabs.Trigger name="index">

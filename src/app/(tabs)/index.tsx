@@ -26,6 +26,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
+  Platform,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -37,6 +38,8 @@ import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
+import { useBreakpoint } from "@/hooks/useBreakpoint";
+import { isWeb } from "@/utils/platform";
 
 const { width: W } = Dimensions.get("window");
 const ACCENT = "#208AEF";
@@ -215,6 +218,7 @@ export default function HomeScreen() {
   const [profile, setProfile] = useState<UserModel | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const insets = useSafeAreaInsets();
+  const { isMobile } = useBreakpoint();
 
   const drawerAnim = useRef(new Animated.Value(-W * 0.8)).current;
 
@@ -250,10 +254,13 @@ export default function HomeScreen() {
     else setTheme("light");
   };
 
+  const isDesktop = isWeb && !isMobile;
+
   return (
     <View style={{ flex: 1, backgroundColor: isDark ? "#09090B" : "#F9F9F9" }}>
       <SafeAreaView style={styles.container} edges={["top"]}>
-        {/* App bar */}
+        {/* App bar — only on native/mobile web */}
+        {!isDesktop && (
         <View
           style={[
             styles.appBar,
@@ -295,6 +302,7 @@ export default function HomeScreen() {
             </View>
           </View>
         </View>
+        )}
 
         {/* Tab bar */}
         <HomeTabBar
@@ -328,8 +336,8 @@ export default function HomeScreen() {
         )}
       </SafeAreaView>
 
-      {/* Drawer Overlay Backdrop */}
-      {drawerOpen && (
+      {/* Drawer Overlay Backdrop — native/mobile only */}
+      {!isDesktop && drawerOpen && (
         <Pressable
           style={StyleSheet.absoluteFill}
           onPress={() => toggleDrawer(false)}
@@ -338,7 +346,8 @@ export default function HomeScreen() {
         </Pressable>
       )}
 
-      {/* Custom Left Drawer */}
+      {/* Custom Left Drawer — native/mobile only */}
+      {!isDesktop && (
       <Animated.View
         style={[
           styles.drawer,
@@ -448,6 +457,7 @@ export default function HomeScreen() {
           />
         </View>
       </Animated.View>
+      )}
     </View>
   );
 }
