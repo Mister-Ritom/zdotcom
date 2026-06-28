@@ -1,21 +1,32 @@
-import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Pressable, Share, Dimensions } from 'react-native';
-import { Image } from 'expo-image';
+import { Avatar } from "@/components/common/Avatar";
+import { ZapText } from "@/components/feed/ZapText";
+import { ZapVideoPlayer } from "@/components/feed/ZapVideoPlayer";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { type UserModel, type ZapModel } from "@/types/models";
+import { Image } from "expo-image";
 import {
-  Heart, MessageCircle, Repeat2, Share2, Bookmark,
-  ShieldCheck, Ellipsis, Zap,
-} from 'lucide-react-native';
-import { Avatar } from '@/components/common/Avatar';
-import { ZapText } from '@/components/feed/ZapText';
-import { ZapVideoPlayer } from '@/components/feed/ZapVideoPlayer';
-import { type ZapModel } from '@/types/models';
-import { type UserModel } from '@/types/models';
-import { useColorScheme } from '@/hooks/use-color-scheme';
+  Bookmark,
+  Ellipsis,
+  Heart,
+  MessageCircle,
+  Repeat2,
+  Share2,
+  ShieldCheck,
+  Zap,
+} from "lucide-react-native";
+import React, { useCallback, useState } from "react";
+import {
+  Pressable,
+  Share,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
 
-const isVideo = (url: string) => url.toLowerCase().includes('.mp4');
+const isVideo = (url: string) => url.toLowerCase().includes(".mp4");
 
-const { width: SCREEN_W } = Dimensions.get('window');
-const ACCENT = '#208AEF';
+const ACCENT = "#208AEF";
 
 function timeAgo(date: Date): string {
   const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
@@ -61,7 +72,7 @@ export function ZapCard({
   onBoost,
   onOptions,
 }: Props) {
-  const isDark = useColorScheme() === 'dark';
+  const isDark = useColorScheme() === "dark";
   const hasMedia = zap.mediaUrls.length > 0;
   const hasText = zap.text.trim().length > 0;
   const [imgIndex, setImgIndex] = useState(0);
@@ -70,8 +81,8 @@ export function ZapCard({
     await Share.share({ message: `Check this out on Z! z://zap/${zap.id}` });
   }, [zap.id]);
 
-  const cardBg = isDark ? '#18181B' : '#FFFFFF';
-  const borderColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+  const cardBg = isDark ? "#18181B" : "#FFFFFF";
+  const borderColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
 
   return (
     <Pressable
@@ -83,37 +94,61 @@ export function ZapCard({
         <View style={styles.headerLeft}>
           <Avatar
             uri={user?.profilePictureUrl}
-            name={user?.displayName ?? '?'}
+            name={user?.displayName ?? "?"}
             size={42}
           />
           <View style={styles.headerText}>
             <View style={styles.nameRow}>
-              <Text style={[styles.displayName, { color: isDark ? '#F4F4F5' : '#18181B' }]}>
-                {user?.displayName ?? '...'}
+              <Text
+                style={[
+                  styles.displayName,
+                  { color: isDark ? "#F4F4F5" : "#18181B" },
+                ]}
+              >
+                {user?.displayName ?? "..."}
               </Text>
               {user?.isVerified && (
-                <ShieldCheck size={14} color={ACCENT} strokeWidth={2.5} style={{ marginLeft: 4 }} />
+                <ShieldCheck
+                  size={14}
+                  color={ACCENT}
+                  strokeWidth={2.5}
+                  style={{ marginLeft: 4 }}
+                />
               )}
-              <Text style={[styles.timeAgo, { color: isDark ? '#71717A' : '#A1A1AA' }]}>
-                {'  /  '}{timeAgo(zap.createdAt)}
+              <Text
+                style={[
+                  styles.timeAgo,
+                  { color: isDark ? "#71717A" : "#A1A1AA" },
+                ]}
+              >
+                {"  /  "}
+                {timeAgo(zap.createdAt)}
               </Text>
             </View>
-            <Text style={[styles.username, { color: isDark ? '#52525B' : '#A1A1AA' }]}>
-              @{user?.username ?? '...'}
-              {zap.isThread && (
-                <Text style={{ color: ACCENT }}> # thread</Text>
-              )}
+            <Text
+              style={[
+                styles.username,
+                { color: isDark ? "#52525B" : "#A1A1AA" },
+              ]}
+            >
+              @{user?.username ?? "..."}
+              {zap.isThread && <Text style={{ color: ACCENT }}> # thread</Text>}
             </Text>
           </View>
         </View>
         <TouchableOpacity hitSlop={8} onPress={onOptions}>
-          <Ellipsis size={18} color={isDark ? '#52525B' : '#A1A1AA'} />
+          <Ellipsis size={18} color={isDark ? "#52525B" : "#A1A1AA"} />
         </TouchableOpacity>
       </View>
 
       {/* Media */}
       {hasMedia ? (
-        <View style={[styles.mediaContainer, { aspectRatio: zap.isShort ? 9 / 16 : 4 / 3 }]}>
+        <View
+          style={[
+            styles.mediaContainer,
+            { aspectRatio: zap.isShort ? 9 / 16 : 4 / 3 },
+          ]}
+        >
           {isVideo(zap.mediaUrls[imgIndex]) ? (
             <ZapVideoPlayer uri={zap.mediaUrls[imgIndex]} />
           ) : (
@@ -131,7 +166,10 @@ export function ZapCard({
                   key={i}
                   style={[
                     styles.dot,
-                    { backgroundColor: i === imgIndex ? '#fff' : 'rgba(255,255,255,0.4)' },
+                    {
+                      backgroundColor:
+                        i === imgIndex ? "#fff" : "rgba(255,255,255,0.4)",
+                    },
                   ]}
                 />
               ))}
@@ -140,23 +178,37 @@ export function ZapCard({
         </View>
       ) : (
         // Text-only big block
-        <View style={[
-          styles.textBlock,
-          {
-            backgroundColor: isDark
-              ? 'linear-gradient(135deg, #0F172A 0%, #000 100%)'
-              : undefined,
-          },
-        ]}>
-          <View style={[styles.textBlockInner, {
-            backgroundColor: isDark ? '#0F172A' : '#EFF6FF',
-          }]}>
-            <Zap size={36} color={ACCENT} strokeWidth={2.5} style={{ marginBottom: 12 }} />
-            <Text style={[
-              styles.textBlockQuote,
-              { color: isDark ? '#93C5FD' : '#1D4ED8' },
-            ]}>
-              "{zap.text}"
+        <View
+          style={[
+            styles.textBlock,
+            {
+              backgroundColor: isDark
+                ? "linear-gradient(135deg, #0F172A 0%, #000 100%)"
+                : undefined,
+            },
+          ]}
+        >
+          <View
+            style={[
+              styles.textBlockInner,
+              {
+                backgroundColor: isDark ? "#0F172A" : "#EFF6FF",
+              },
+            ]}
+          >
+            <Zap
+              size={36}
+              color={ACCENT}
+              strokeWidth={2.5}
+              style={{ marginBottom: 12 }}
+            />
+            <Text
+              style={[
+                styles.textBlockQuote,
+                { color: isDark ? "#93C5FD" : "#1D4ED8" },
+              ]}
+            >
+              &quot;{zap.text}&quot;
             </Text>
           </View>
         </View>
@@ -173,19 +225,38 @@ export function ZapCard({
       <View style={styles.actions}>
         <View style={styles.actionsLeft}>
           <ActionBtn
-            icon={<Heart size={15} color={isLiked ? '#EF4444' : (isDark ? '#71717A' : '#A1A1AA')} fill={isLiked ? '#EF4444' : 'none'} strokeWidth={2} />}
+            icon={
+              <Heart
+                size={15}
+                color={isLiked ? "#EF4444" : isDark ? "#71717A" : "#A1A1AA"}
+                fill={isLiked ? "#EF4444" : "none"}
+                strokeWidth={2}
+              />
+            }
             label={formatCount(likesCount ?? zap.likesCount)}
             active={isLiked}
             activeColor="#EF4444"
             onPress={onLike}
           />
           <ActionBtn
-            icon={<MessageCircle size={15} color={isDark ? '#71717A' : '#A1A1AA'} strokeWidth={2} />}
+            icon={
+              <MessageCircle
+                size={15}
+                color={isDark ? "#71717A" : "#A1A1AA"}
+                strokeWidth={2}
+              />
+            }
             label={String(zap.repliesCount)}
             onPress={onPress}
           />
           <ActionBtn
-            icon={<Repeat2 size={15} color={isBoosted ? '#10B981' : (isDark ? '#71717A' : '#A1A1AA')} strokeWidth={2} />}
+            icon={
+              <Repeat2
+                size={15}
+                color={isBoosted ? "#10B981" : isDark ? "#71717A" : "#A1A1AA"}
+                strokeWidth={2}
+              />
+            }
             label={formatCount(rezapsCount ?? zap.rezapsCount)}
             active={isBoosted}
             activeColor="#10B981"
@@ -193,14 +264,26 @@ export function ZapCard({
           />
         </View>
         <View style={styles.actionsRight}>
-          <TouchableOpacity onPress={handleShare} hitSlop={8} style={styles.iconBtn}>
-            <Share2 size={17} color={isDark ? '#52525B' : '#A1A1AA'} strokeWidth={2} />
+          <TouchableOpacity
+            onPress={handleShare}
+            hitSlop={8}
+            style={styles.iconBtn}
+          >
+            <Share2
+              size={17}
+              color={isDark ? "#52525B" : "#A1A1AA"}
+              strokeWidth={2}
+            />
           </TouchableOpacity>
-          <TouchableOpacity onPress={onBookmark} hitSlop={8} style={styles.iconBtn}>
+          <TouchableOpacity
+            onPress={onBookmark}
+            hitSlop={8}
+            style={styles.iconBtn}
+          >
             <Bookmark
               size={17}
-              color={isBookmarked ? ACCENT : (isDark ? '#52525B' : '#A1A1AA')}
-              fill={isBookmarked ? ACCENT : 'none'}
+              color={isBookmarked ? ACCENT : isDark ? "#52525B" : "#A1A1AA"}
+              fill={isBookmarked ? ACCENT : "none"}
               strokeWidth={2}
             />
           </TouchableOpacity>
@@ -219,10 +302,17 @@ interface ActionBtnProps {
   onPress?: () => void;
 }
 
-function ActionBtn({ icon, label, active = false, activeColor = ACCENT, isText = false, onPress }: ActionBtnProps) {
-  const isDark = useColorScheme() === 'dark';
-  const bg = isDark ? '#27272A' : '#F4F4F5';
-  const textColor = active ? activeColor : (isDark ? '#71717A' : '#A1A1AA');
+function ActionBtn({
+  icon,
+  label,
+  active = false,
+  activeColor = ACCENT,
+  isText = false,
+  onPress,
+}: ActionBtnProps) {
+  const isDark = useColorScheme() === "dark";
+  const bg = isDark ? "#27272A" : "#F4F4F5";
+  const textColor = active ? activeColor : isDark ? "#71717A" : "#A1A1AA";
 
   return (
     <TouchableOpacity
@@ -241,73 +331,83 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     marginBottom: 12,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     padding: 14,
   },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  headerLeft: { flexDirection: "row", alignItems: "center", flex: 1 },
   headerText: { marginLeft: 10, flex: 1 },
-  nameRow: { flexDirection: 'row', alignItems: 'center' },
-  displayName: { fontSize: 14, fontWeight: '700' },
-  timeAgo: { fontSize: 11, fontWeight: '500' },
-  username: { fontSize: 11, fontWeight: '600', letterSpacing: 0.5, marginTop: 1 },
+  nameRow: { flexDirection: "row", alignItems: "center" },
+  displayName: { fontSize: 14, fontWeight: "700" },
+  timeAgo: { fontSize: 11, fontWeight: "500" },
+  username: {
+    fontSize: 11,
+    fontWeight: "600",
+    letterSpacing: 0.5,
+    marginTop: 1,
+  },
   mediaContainer: {
     marginHorizontal: 14,
     marginBottom: 4,
     borderRadius: 12,
-    overflow: 'hidden',
+    overflow: "hidden",
     aspectRatio: 4 / 3,
-    backgroundColor: '#000',
+    backgroundColor: "#000",
   },
-  mediaImage: { width: '100%', height: '100%' },
+  mediaImage: { width: "100%", height: "100%" },
   paginationDots: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 8,
     left: 0,
     right: 0,
-    flexDirection: 'row',
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     gap: 4,
   },
   dot: { width: 6, height: 6, borderRadius: 3 },
-  textBlock: { marginHorizontal: 14, marginBottom: 4, borderRadius: 12, overflow: 'hidden' },
+  textBlock: {
+    marginHorizontal: 14,
+    marginBottom: 4,
+    borderRadius: 12,
+    overflow: "hidden",
+  },
   textBlockInner: {
     padding: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     minHeight: 160,
   },
   textBlockQuote: {
     fontSize: 22,
-    fontWeight: '900',
-    fontStyle: 'italic',
-    textAlign: 'center',
+    fontWeight: "900",
+    fontStyle: "italic",
+    textAlign: "center",
     lineHeight: 28,
     letterSpacing: -0.5,
   },
   caption: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 4 },
   actions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 14,
     paddingTop: 10,
     paddingBottom: 16,
   },
-  actionsLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  actionsRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  actionsLeft: { flexDirection: "row", alignItems: "center", gap: 6 },
+  actionsRight: { flexDirection: "row", alignItems: "center", gap: 4 },
   actionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 12,
   },
-  actionLabel: { fontSize: 12, fontWeight: '800' },
+  actionLabel: { fontSize: 12, fontWeight: "800" },
   iconBtn: { padding: 6 },
 });

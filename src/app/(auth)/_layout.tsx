@@ -5,10 +5,20 @@
  */
 
 import { Stack } from 'expo-router';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 
 export default function AuthLayout() {
+  const colorScheme = useColorScheme();
+
   return (
-    <Stack screenOptions={{ headerShown: false }}>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: {
+          backgroundColor: colorScheme === 'dark' ? '#09090B' : '#FFF',
+        },
+      }}
+    >
       <Stack.Screen name="onboarding" />
       <Stack.Screen name="login" />
       <Stack.Screen name="signup" />

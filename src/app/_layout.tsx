@@ -33,8 +33,27 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 // Keep the splash screen visible until auth resolves
 SplashScreen.preventAutoHideAsync();
 
-function InitialLayout() {
-  const { user, isInitialized } = useAuthStore();
+const CustomDarkTheme = {
+  ...DarkTheme,
+  colors: {
+    ...DarkTheme.colors,
+    background: "#09090B",
+    card: "#09090B",
+  },
+};
+
+const CustomLightTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: "#FFF",
+    card: "#FFF",
+  },
+};
+
+function AuthGuard() {
+  const user = useAuthStore((s) => s.user);
+  const isInitialized = useAuthStore((s) => s.isInitialized);
   const hasSeenOnboarding = useSettingsStore((s) => s.hasSeenOnboarding);
   const segments = useSegments();
   const router = useRouter();
@@ -62,18 +81,35 @@ function InitialLayout() {
     }
   }, [user, isInitialized, segments, hasSeenOnboarding, router]);
 
+  return null;
+}
+
+function InitialLayout() {
+  const colorScheme = useColorScheme();
+
   return (
-    <Stack screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="index" />
-      <Stack.Screen name="(auth)" />
-      <Stack.Screen name="(tabs)" />
-    </Stack>
+    <>
+      <AuthGuard />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: {
+            backgroundColor: colorScheme === "dark" ? "#09090B" : "#FFF",
+          },
+        }}
+      >
+        <Stack.Screen name="index" />
+        <Stack.Screen name="(auth)" />
+        <Stack.Screen name="(tabs)" />
+      </Stack>
+    </>
   );
 }
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
-  const { initialize, isInitialized } = useAuthStore();
+  const initialize = useAuthStore((s) => s.initialize);
+  const isInitialized = useAuthStore((s) => s.isInitialized);
 
   useEffect(() => {
     // Configure Google Sign-In (safe to call even in Expo Go — just won't work at runtime)
@@ -92,7 +128,7 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={styles.root}>
-      <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
+      <ThemeProvider value={colorScheme === "dark" ? CustomDarkTheme : CustomLightTheme}>
         <BottomSheetModalProvider>
           <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
           <View style={styles.root}>
