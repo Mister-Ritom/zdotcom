@@ -25,6 +25,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { messageService } from '@/services/messageService';
 import { userService } from '@/services/userService';
 import { type ConversationModel, type UserModel } from '@/types/models';
+import { isWeb } from '@/utils/platform';
 import BottomSheet from '@gorhom/bottom-sheet';
 import {
   Check,
@@ -199,8 +200,8 @@ export const SendSheet = forwardRef<BottomSheet, SendSheetProps>(
         onWebClose={onClose}
       >
         <ModalView style={styles.container}>
-          {/* Title */}
-          <Text style={[styles.title, { color: textColor }]}>Send</Text>
+          {/* Title — hidden on web, the WebModal dialog header already shows it */}
+          {!isWeb && <Text style={[styles.title, { color: textColor }]}>Send</Text>}
 
           {/* Search / Message input */}
           <View style={[styles.searchRow, { backgroundColor: inputBg }]}>

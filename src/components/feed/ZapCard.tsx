@@ -52,6 +52,7 @@ interface Props {
   onLike?: () => void;
   onBookmark?: () => void;
   onBoost?: () => void;
+  disableBoost?: boolean;
   onOptions?: () => void;
 }
 
@@ -67,6 +68,7 @@ export function ZapCard({
   onLike,
   onBookmark,
   onBoost,
+  disableBoost = false,
   onOptions,
 }: Props) {
   const isDark = useColorScheme() === "dark";
@@ -228,6 +230,7 @@ export function ZapCard({
             active={isBoosted}
             activeColor="#10B981"
             onPress={onBoost}
+            disabled={disableBoost}
           />
         </View>
         <View style={styles.actionsRight}>
@@ -274,6 +277,7 @@ function ActionBtn({
   label,
   active = false,
   activeColor = ACCENT,
+  disabled = false,
   isText = false,
   onPress,
 }: ActionBtnProps) {
@@ -284,8 +288,9 @@ function ActionBtn({
   return (
     <TouchableOpacity
       onPress={onPress}
-      style={[styles.actionBtn, { backgroundColor: bg }]}
+      style={[styles.actionBtn, { backgroundColor: bg }, disabled && { opacity: 0.5 }]}
       activeOpacity={0.7}
+      disabled={disabled}
     >
       {icon}
       <Text style={[styles.actionLabel, { color: textColor }]}>{label}</Text>

@@ -12,6 +12,7 @@ interface FeedSlice {
   hasMore: boolean;
   page: number;
   likedIds: Set<string>;
+  resharedIds: Set<string>;
   bookmarkedIds: Set<string>;
 }
 
@@ -22,6 +23,7 @@ const INITIAL: FeedSlice = {
   hasMore: true,
   page: 0,
   likedIds: new Set(),
+  resharedIds: new Set(),
   bookmarkedIds: new Set(),
 };
 
@@ -37,11 +39,23 @@ interface FeedStore {
   loadMoreShorts: (userId?: string) => Promise<void>;
 
   toggleLike: (zapId: string, userId: string, isShort?: boolean) => Promise<void>;
+  toggleRepost: (zapId: string, userId: string, isShort?: boolean) => Promise<void>;
   toggleBookmark: (zapId: string, userId: string) => Promise<void>;
   isLiked: (zapId: string) => boolean;
+  isReshared: (zapId: string) => boolean;
   isBookmarked: (zapId: string) => boolean;
   setLiked: (zapId: string, liked: boolean) => void;
+  setReshared: (zapId: string, reshared: boolean) => void;
   setBookmarked: (zapId: string, bookmarked: boolean) => void;
+}
+
+// Helper: batch-fetch liked + reshared IDs for a set of zaps in parallel
+async function seedInteractions(userId: string, zapIds: string[], isShort: boolean) {
+  const [likedIds, resharedIds] = await Promise.all([
+    zapService.getLikedZapIds(userId, zapIds, isShort),
+    zapService.getResharedZapIds(userId, zapIds, isShort),
+  ]);
+  return { likedIds, resharedIds };
 }
 
 export const useFeedStore = create<FeedStore>((set, get) => ({
@@ -61,9 +75,9 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
 
     try {
       const zaps = await zapService.getForYouFeed(false, PAGE_SIZE, page * PAGE_SIZE);
-      const likedIds = userId
-        ? await zapService.getLikedZapIds(userId, zaps.map((z) => z.id), false)
-        : new Set<string>();
+      const { likedIds, resharedIds } = userId
+        ? await seedInteractions(userId, zaps.map((z) => z.id), false)
+        : { likedIds: new Set<string>(), resharedIds: new Set<string>() };
       set((s) => ({
         forYou: {
           ...s.forYou,
@@ -73,6 +87,7 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
           hasMore: zaps.length === PAGE_SIZE,
           page: page + 1,
           likedIds: refresh ? likedIds : new Set([...s.forYou.likedIds, ...likedIds]),
+          resharedIds: refresh ? resharedIds : new Set([...s.forYou.resharedIds, ...resharedIds]),
         },
       }));
     } catch (e) {
@@ -96,6 +111,7 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
 
     try {
       const zaps = await zapService.getFollowingFeed(userId);
+      const { likedIds, resharedIds } = await seedInteractions(userId, zaps.map((z) => z.id), false);
       set((s) => ({
         following: {
           ...s.following,
@@ -104,6 +120,8 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
           isRefreshing: false,
           hasMore: false, // Following feed loads all in one shot
           page: 1,
+          likedIds: refresh ? likedIds : new Set([...s.following.likedIds, ...likedIds]),
+          resharedIds: refresh ? resharedIds : new Set([...s.following.resharedIds, ...resharedIds]),
         },
       }));
     } catch (e) {
@@ -124,9 +142,9 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
 
     try {
       const zaps = await zapService.getForYouFeed(true, PAGE_SIZE, page * PAGE_SIZE);
-      const likedIds = userId
-        ? await zapService.getLikedZapIds(userId, zaps.map((z) => z.id), true)
-        : new Set<string>();
+      const { likedIds, resharedIds } = userId
+        ? await seedInteractions(userId, zaps.map((z) => z.id), true)
+        : { likedIds: new Set<string>(), resharedIds: new Set<string>() };
       set((s) => ({
         shorts: {
           ...s.shorts,
@@ -136,6 +154,7 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
           hasMore: zaps.length === PAGE_SIZE,
           page: page + 1,
           likedIds: refresh ? likedIds : new Set([...s.shorts.likedIds, ...likedIds]),
+          resharedIds: refresh ? resharedIds : new Set([...s.shorts.resharedIds, ...resharedIds]),
         },
       }));
     } catch (e) {
@@ -151,7 +170,6 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
   // ── Interactions ────────────────────────────────────────────────
   async toggleLike(zapId, userId, isShort = false) {
     const wasLiked = get().isLiked(zapId);
-    // Optimistic update
     get().setLiked(zapId, !wasLiked);
     const updateCount = (z: ZapModel) =>
       z.id === zapId ? { ...z, likesCount: z.likesCount + (wasLiked ? -1 : 1) } : z;
@@ -163,8 +181,40 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
     try {
       await zapService.toggleLike(userId, zapId, isShort);
     } catch {
-      // Revert on failure
       get().setLiked(zapId, wasLiked);
+      // Revert count
+      const revertCount = (z: ZapModel) =>
+        z.id === zapId ? { ...z, likesCount: z.likesCount + (wasLiked ? 1 : -1) } : z;
+      set((s) => ({
+        forYou: { ...s.forYou, zaps: s.forYou.zaps.map(revertCount) },
+        following: { ...s.following, zaps: s.following.zaps.map(revertCount) },
+        shorts: { ...s.shorts, zaps: s.shorts.zaps.map(revertCount) },
+      }));
+    }
+  },
+
+  async toggleRepost(zapId, userId, isShort = false) {
+    const wasReshared = get().isReshared(zapId);
+    get().setReshared(zapId, !wasReshared);
+    const updateCount = (z: ZapModel) =>
+      z.id === zapId ? { ...z, rezapsCount: z.rezapsCount + (wasReshared ? -1 : 1) } : z;
+    set((s) => ({
+      forYou: { ...s.forYou, zaps: s.forYou.zaps.map(updateCount) },
+      following: { ...s.following, zaps: s.following.zaps.map(updateCount) },
+      shorts: { ...s.shorts, zaps: s.shorts.zaps.map(updateCount) },
+    }));
+    try {
+      await zapService.toggleRepost(userId, zapId, isShort);
+    } catch {
+      get().setReshared(zapId, wasReshared);
+      // Revert count
+      const revertCount = (z: ZapModel) =>
+        z.id === zapId ? { ...z, rezapsCount: z.rezapsCount + (wasReshared ? 1 : -1) } : z;
+      set((s) => ({
+        forYou: { ...s.forYou, zaps: s.forYou.zaps.map(revertCount) },
+        following: { ...s.following, zaps: s.following.zaps.map(revertCount) },
+        shorts: { ...s.shorts, zaps: s.shorts.zaps.map(revertCount) },
+      }));
     }
   },
 
@@ -179,9 +229,19 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
   },
 
   isLiked(zapId) {
-    return get().forYou.likedIds.has(zapId) ||
+    return (
+      get().forYou.likedIds.has(zapId) ||
       get().following.likedIds.has(zapId) ||
-      get().shorts.likedIds.has(zapId);
+      get().shorts.likedIds.has(zapId)
+    );
+  },
+
+  isReshared(zapId) {
+    return (
+      get().forYou.resharedIds.has(zapId) ||
+      get().following.resharedIds.has(zapId) ||
+      get().shorts.resharedIds.has(zapId)
+    );
   },
 
   isBookmarked(zapId) {
@@ -194,6 +254,17 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
         const ids = new Set(slice.likedIds);
         liked ? ids.add(zapId) : ids.delete(zapId);
         return { ...slice, likedIds: ids };
+      };
+      return { forYou: update(s.forYou), following: update(s.following), shorts: update(s.shorts) };
+    });
+  },
+
+  setReshared(zapId, reshared) {
+    set((s) => {
+      const update = (slice: FeedSlice): FeedSlice => {
+        const ids = new Set(slice.resharedIds);
+        reshared ? ids.add(zapId) : ids.delete(zapId);
+        return { ...slice, resharedIds: ids };
       };
       return { forYou: update(s.forYou), following: update(s.following), shorts: update(s.shorts) };
     });

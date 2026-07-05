@@ -1,5 +1,6 @@
 import { ShortVideoPlayer } from "@/components/shorts/ShortVideoPlayer";
 import { userService } from "@/services/userService";
+import { zapService } from "@/services/zapService";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useFeedStore } from "@/stores/useFeedStore";
 import { type UserModel, type ZapModel } from "@/types/models";
@@ -27,8 +28,8 @@ export function ShortVideoContainer({
   // Drive liked state and count from the store so that:
   // 1. Optimistic updates made while scrolling survive a remount.
   // 2. The displayed count always matches what the store thinks.
-  const { isLiked, toggleLike } = useFeedStore();
-  const liked = isLiked(zap.id);
+  const { toggleLike } = useFeedStore();
+  const liked = useFeedStore((s) => s.forYou.likedIds.has(zap.id) || s.following.likedIds.has(zap.id) || s.shorts.likedIds.has(zap.id));
 
   // Read the current count from the store's copy of the zap rather than the
   // stale prop — the store's toggleLike already mutates z.likesCount in place.
@@ -39,6 +40,22 @@ export function ShortVideoContainer({
   useEffect(() => {
     userService.getById(zap.userId).then(setUser);
   }, [zap.userId]);
+
+  useEffect(() => {
+    if (authUser?.id) {
+      // For zaps loaded outside the main feeds (e.g. profile), fetch state if missing
+      zapService.isLiked(authUser.id, zap.id, true).then((res) => {
+        if (res && !useFeedStore.getState().isLiked(zap.id)) {
+          useFeedStore.getState().setLiked(zap.id, true);
+        }
+      });
+      zapService.isReposted(authUser.id, zap.id, true).then((res) => {
+        if (res && !useFeedStore.getState().isReshared(zap.id)) {
+          useFeedStore.getState().setReshared(zap.id, true);
+        }
+      });
+    }
+  }, [zap.id, authUser?.id]);
 
   const handleLike = async () => {
     if (!authUser?.id) return;

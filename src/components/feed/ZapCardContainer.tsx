@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { userService } from '@/services/userService';
@@ -7,8 +7,8 @@ import { ZapCard } from '@/components/feed/ZapCard';
 import { type ZapModel, type UserModel } from '@/types/models';
 import { OptionsSheet } from '@/components/sheets/OptionsSheet';
 import BottomSheet from '@gorhom/bottom-sheet';
-import { useRef } from 'react';
 import { useTabBarVisibility } from '@/contexts/TabBarVisibilityContext';
+import { useFeedStore } from '@/stores/useFeedStore';
 
 interface Props {
   zap: ZapModel;
@@ -19,53 +19,64 @@ interface Props {
 export function ZapCardContainer({ zap, isShort = false, onPress }: Props) {
   const [user, setUser] = useState<UserModel | null>(null);
   const { user: authUser } = useAuthStore();
-  const [liked, setLiked] = useState(false);
-  const [likesCount, setLikesCount] = useState(zap.likesCount);
-  const [rezapsCount, setRezapsCount] = useState(zap.rezapsCount);
   const [bookmarked, setBookmarked] = useState(false);
-  const [boosted, setBoosted] = useState(false);
   const optionsSheetRef = useRef<BottomSheet>(null);
   const { setTabBarHidden } = useTabBarVisibility();
+
+  // Drive liked/rezapped state and counts from the store so they are consistent
+  // across remounts and reflect the seeded server state on load.
+  const { toggleLike, toggleRepost } = useFeedStore();
+  const liked = useFeedStore((s) => s.forYou.likedIds.has(zap.id) || s.following.likedIds.has(zap.id) || s.shorts.likedIds.has(zap.id));
+  const boosted = useFeedStore((s) => s.forYou.resharedIds.has(zap.id) || s.following.resharedIds.has(zap.id) || s.shorts.resharedIds.has(zap.id));
+
+  const likesCount = useFeedStore(
+    (s) =>
+      [...s.forYou.zaps, ...s.following.zaps, ...s.shorts.zaps].find((z) => z.id === zap.id)
+        ?.likesCount ?? zap.likesCount
+  );
+  const rezapsCount = useFeedStore(
+    (s) =>
+      [...s.forYou.zaps, ...s.following.zaps, ...s.shorts.zaps].find((z) => z.id === zap.id)
+        ?.rezapsCount ?? zap.rezapsCount
+  );
 
   useEffect(() => {
     userService.getById(zap.userId).then(setUser);
   }, [zap.userId]);
 
   useEffect(() => {
-    setLikesCount(zap.likesCount);
-    setRezapsCount(zap.rezapsCount);
-  }, [zap.likesCount, zap.rezapsCount]);
-
-  useEffect(() => {
     if (authUser?.id) {
-      zapService.isLiked(authUser.id, zap.id, isShort).then(setLiked);
       zapService.isBookmarked(authUser.id, zap.id).then(setBookmarked);
-      zapService.isReposted(authUser.id, zap.id, isShort).then(setBoosted);
+      
+      // For zaps loaded outside the main feeds (e.g. profile), fetch state if missing
+      zapService.isLiked(authUser.id, zap.id, isShort).then((res) => {
+        if (res && !useFeedStore.getState().isLiked(zap.id)) {
+          useFeedStore.getState().setLiked(zap.id, true);
+        }
+      });
+      zapService.isReposted(authUser.id, zap.id, isShort).then((res) => {
+        if (res && !useFeedStore.getState().isReshared(zap.id)) {
+          useFeedStore.getState().setReshared(zap.id, true);
+        }
+      });
     }
   }, [zap.id, authUser?.id, isShort]);
 
   const handleLike = async () => {
     if (!authUser?.id) return;
-    const nextLiked = !liked;
-    setLiked(nextLiked);
-    setLikesCount((prev) => prev + (nextLiked ? 1 : -1));
-    await zapService.toggleLike(authUser.id, zap.id, isShort);
+    await toggleLike(zap.id, authUser.id, isShort);
   };
 
   const handleBoost = async () => {
     if (!authUser?.id) return;
-    // Prevent user from boosting their own post (matches Flutter behavior)
-    if (authUser.id === zap.userId) return;
-    const nextBoosted = !boosted;
-    setBoosted(nextBoosted);
-    setRezapsCount((prev) => prev + (nextBoosted ? 1 : -1));
-    await zapService.toggleRepost(authUser.id, zap.id, isShort);
+    if (authUser.id === zap.userId) return; // Can't rezap own post
+    await toggleRepost(zap.id, authUser.id, isShort);
   };
 
   const handleBookmark = async () => {
     if (!authUser?.id) return;
-    const nextBookmarked = !bookmarked;
-    setBookmarked(nextBookmarked);
+    const next = !bookmarked;
+    setBookmarked(next);
     await zapService.toggleBookmark(authUser.id, zap.id);
   };
 
@@ -76,9 +87,6 @@ export function ZapCardContainer({ zap, isShort = false, onPress }: Props) {
     });
   });
 
-  // If we fetched the zap and it says 0 likes but user has liked it, show at least 1.
-  const displayLikes = Math.max(likesCount, liked ? 1 : 0);
-
   return (
     <>
       <ZapCard
@@ -87,8 +95,9 @@ export function ZapCardContainer({ zap, isShort = false, onPress }: Props) {
         isLiked={liked}
         isBookmarked={bookmarked}
         isBoosted={boosted}
-        likesCount={displayLikes}
+        likesCount={likesCount}
         rezapsCount={rezapsCount}
+        disableBoost={authUser?.id === zap.userId}
         onPress={handlePress}
         onLike={handleLike}
         onBookmark={handleBookmark}

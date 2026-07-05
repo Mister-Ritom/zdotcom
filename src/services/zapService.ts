@@ -135,6 +135,23 @@ export const zapService = {
     }
   },
 
+  /** Batch fetch which zap IDs the user has reshared. Used to seed the store on feed load. */
+  async getResharedZapIds(userId: string, zapIds: string[], isShort = false): Promise<Set<string>> {
+    try {
+      const targetType = isShort ? 'short' : 'zap';
+      const { data } = await supabase
+        .from('user_interactions')
+        .select('target_id')
+        .eq('user_id', userId)
+        .eq('reshared', true)
+        .eq('target_type', targetType)
+        .in('target_id', zapIds);
+      return new Set((data ?? []).map((d) => d['target_id'] as string));
+    } catch {
+      return new Set();
+    }
+  },
+
   async toggleBookmark(userId: string, zapId: string): Promise<void> {
     try {
       const { data: existing } = await supabase
