@@ -19,6 +19,7 @@
       }
     },
     "production": {
+      "autoIncrement": true,
       "android": {
         "credentialsSource": "remote",
         "buildType": "app-bundle"

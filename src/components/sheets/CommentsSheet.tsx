@@ -5,7 +5,7 @@ import { zapService } from '@/services/zapService';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { Send } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { isDesktopWeb } from '@/utils/platform';
+import { isWeb } from '@/utils/platform';
 import BottomSheet from '@gorhom/bottom-sheet';
 
 export interface CommentsSheetProps {
@@ -13,7 +13,7 @@ export interface CommentsSheetProps {
   onClose?: () => void;
 }
 
-export const CommentsSheet = forwardRef<BottomSheet, CommentsSheetProps>(({ postId, onClose }, ref) => {
+export const CommentsSheet = forwardRef<BottomSheet, CommentsSheetProps>(function CommentsSheet({ postId, onClose }, ref) {
   const isDark = useColorScheme() === 'dark';
   const { user } = useAuthStore();
   const [comments, setComments] = useState<any[]>([]);
@@ -99,11 +99,12 @@ export const CommentsSheet = forwardRef<BottomSheet, CommentsSheetProps>(({ post
       keyboardBehavior="interactive"
       keyboardBlurBehavior="restore"
       enablePanDownToClose
+      enableDynamicSizing={false}
       webTitle="Comments"
       onWebClose={onClose}
     >
       <View style={styles.container}>
-        {!isDesktopWeb && <Text style={[styles.title, { color: isDark ? '#FFF' : '#000' }]}>Comments</Text>}
+        {!isWeb && <Text style={[styles.title, { color: isDark ? '#FFF' : '#000' }]}>Comments</Text>}
         <ModalFlatList
           data={comments}
           keyExtractor={(item) => item.id}

@@ -2,22 +2,19 @@ import { Avatar } from "@/components/common/Avatar";
 import { type UserModel, type ZapModel } from "@/types/models";
 import { useVideoPlayer, VideoView } from "expo-video";
 import {
-  Bookmark,
   Ellipsis,
   Heart,
   MessageCircle,
   Play,
-  Share2,
+  Send,
   Volume2,
   VolumeX,
 } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Platform,
   Pressable,
-  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -39,11 +36,10 @@ interface Props {
   user?: UserModel | null;
   isActive: boolean; // true when this slide is the current page
   isLiked?: boolean;
-  isBookmarked?: boolean;
   likesCount?: number;
   onLike?: () => void;
-  onBookmark?: () => void;
   onComment?: () => void;
+  onSend?: () => void;
   onOptions?: () => void;
   onProfilePress?: () => void;
 }
@@ -53,11 +49,10 @@ export function ShortVideoPlayer({
   user,
   isActive,
   isLiked = false,
-  isBookmarked = false,
   likesCount,
   onLike,
-  onBookmark,
   onComment,
+  onSend,
   onOptions,
   onProfilePress,
 }: Props) {
@@ -86,21 +81,20 @@ export function ShortVideoPlayer({
     p.muted = globalMutedState;
   });
 
+  const playerRef = useRef(player);
+  playerRef.current = player;
+
   // Play / pause driven by isActive + manualPaused
   useEffect(() => {
     if (!player) return;
     if (isActive && !manualPaused) {
-      // Wrap in try/catch — browser autoplay policy can still reject even muted
-      // play in certain contexts (e.g. low battery mode on iOS Safari).
       try {
-        const promise = player.play();
-        if (promise && typeof promise.catch === "function") {
-          promise.catch((e: any) => {
-            console.warn('[ShortVideoPlayer] play() blocked by browser policy:', e?.message);
-          });
-        }
+        player.play();
       } catch (e: any) {
-        console.warn('[ShortVideoPlayer] play() threw synchronous error:', e?.message);
+        console.warn(
+          "[ShortVideoPlayer] play() threw synchronous error:",
+          e?.message,
+        );
       }
     } else {
       player.pause();
@@ -125,33 +119,34 @@ export function ShortVideoPlayer({
   useEffect(() => {
     if (isActive) {
       showControlsTemporarily();
-      if (player) {
-        player.muted = globalMutedState;
+      if (playerRef.current) {
+        playerRef.current.muted = globalMutedState;
         setIsMuted(globalMutedState);
       }
     }
     return () => {
       if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     };
-  }, [isActive, player, showControlsTemporarily]);
+  }, [isActive, showControlsTemporarily]);
 
   const toggleMute = useCallback(() => {
-    if (!player) return;
-    const next = !player.muted;
-    player.muted = next;
+    const p = playerRef.current;
+    if (!p) return;
+    const next = !p.muted;
+    p.muted = next;
     setIsMuted(next);
     globalMutedState = next; // Update global state
     showControlsTemporarily();
     // First unmute may be blocked if user hasn't interacted — handle gracefully
-    if (!next && player.status === 'paused') {
+    if (!next && p.status === "paused") {
       try {
-        const promise = player.play();
+        const promise = p.play();
         if (promise && typeof promise.catch === "function") {
           promise.catch(() => {});
         }
       } catch (e) {}
     }
-  }, [player, showControlsTemporarily]);
+  }, [showControlsTemporarily]);
 
   const togglePlayPause = useCallback(() => {
     setManualPaused((prev) => !prev);
@@ -159,10 +154,8 @@ export function ShortVideoPlayer({
   }, [showControlsTemporarily]);
 
   const handleShare = useCallback(async () => {
-    await Share.share({
-      message: `Watch this short on Z! z://short/${zap.id}`,
-    });
-  }, [zap.id]);
+    onSend?.();
+  }, [onSend]);
 
   if (!videoUrl) return null;
 
@@ -198,20 +191,18 @@ export function ShortVideoPlayer({
         )}
       </Pressable>
 
-      {/* Mute/unmute button — centered */}
-      {(isMuted || tempVisible) && (
-        <TouchableOpacity
-          style={styles.muteButton}
-          onPress={toggleMute}
-          activeOpacity={0.7}
-        >
-          {isMuted ? (
-            <VolumeX size={26} color="#fff" strokeWidth={2.5} />
-          ) : (
-            <Volume2 size={26} color="#fff" strokeWidth={2.5} />
-          )}
-        </TouchableOpacity>
-      )}
+      {/* Mute/unmute button — fixed at top right */}
+      <TouchableOpacity
+        style={[styles.muteButton, { top: isWeb ? 20 : 60 }]}
+        onPress={toggleMute}
+        activeOpacity={0.7}
+      >
+        {isMuted ? (
+          <VolumeX size={18} color="#fff" strokeWidth={2.5} />
+        ) : (
+          <Volume2 size={18} color="#fff" strokeWidth={2.5} />
+        )}
+      </TouchableOpacity>
 
       {/* Right actions column */}
       <View style={styles.actions}>
@@ -238,29 +229,17 @@ export function ShortVideoPlayer({
           onPress={onLike}
         />
         <SideAction
-          icon={<MessageCircle size={26} color="#fff" strokeWidth={2} />}
+          icon={<MessageCircle size={26} color="#fff" strokeWidth={2.5} />}
           label={formatCount(zap.commentsCount)}
           onPress={onComment}
         />
         <SideAction
-          icon={<Share2 size={26} color="#fff" strokeWidth={2} />}
+          icon={<Send size={26} color="#fff" strokeWidth={2.5} />}
           label={formatCount(zap.sharesCount)}
           onPress={handleShare}
         />
         <SideAction
-          icon={
-            <Bookmark
-              size={26}
-              color={isBookmarked ? ACCENT : "#fff"}
-              fill={isBookmarked ? ACCENT : "none"}
-              strokeWidth={2}
-            />
-          }
-          label=""
-          onPress={onBookmark}
-        />
-        <SideAction
-          icon={<Ellipsis size={26} color="#fff" strokeWidth={2} />}
+          icon={<Ellipsis size={26} color="#fff" strokeWidth={2.5} />}
           label=""
           onPress={onOptions}
         />
@@ -333,17 +312,12 @@ const styles = StyleSheet.create({
   },
   muteButton: {
     position: "absolute",
-    left: "50%",
-    top: "50%",
-    transform: [
-      { translateX: -27 },
-      { translateY: -27 },
-    ],
+    right: 16,
     zIndex: 99,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
-    width: 54,
-    height: 54,
-    borderRadius: 27,
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -361,18 +335,19 @@ const styles = StyleSheet.create({
   actions: {
     position: "absolute",
     right: 12,
-    bottom: 100,
+    bottom: 90,
     alignItems: "center",
     gap: 16,
   },
-  avatarWrap: { marginBottom: 4 },
-  sideAction: { alignItems: "center", gap: 3 },
+  avatarWrap: { marginBottom: 6 },
+  sideAction: { alignItems: "center", gap: 4 },
   sideLabel: {
     color: "#fff",
     fontSize: 12,
     fontWeight: "700",
-    textShadowColor: "rgba(0,0,0,0.5)",
+    textShadowColor: "rgba(0,0,0,0.8)",
     textShadowRadius: 4,
+    marginTop: 2,
   },
   bottomOverlay: {
     position: "absolute",

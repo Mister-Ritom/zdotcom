@@ -3,6 +3,8 @@
 export type Privacy = 'public' | 'followers' | 'private';
 export type AccountType = 'public' | 'private' | 'verified' | 'business';
 export type StoryVisibility = 'public' | 'followers' | 'close_friends';
+export type MessagePreference = 'mutual' | 'none' | 'everyone' | 'following' | 'follower';
+
 
 export interface UserModel {
   id: string;
@@ -18,6 +20,7 @@ export interface UserModel {
   zapsCount: number;
   accountType: AccountType;
   isVerified: boolean;
+  messagePreference?: MessagePreference;
 }
 
 export function userFromRow(row: Record<string, unknown>): UserModel {
@@ -36,6 +39,7 @@ export function userFromRow(row: Record<string, unknown>): UserModel {
     zapsCount: (row['zaps_count'] as number) ?? 0,
     accountType,
     isVerified: accountType === 'verified' || accountType === 'business',
+    messagePreference: row['message_preference'] as MessagePreference | undefined,
   };
 }
 

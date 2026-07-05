@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Switch, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { ArrowLeft, Monitor, Moon, Sun } from 'lucide-react-native';
+import { ArrowLeft, Monitor, Moon, Sun, ChevronRight, Lock } from 'lucide-react-native';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
@@ -52,6 +52,21 @@ export default function SettingsScreen() {
               trackColor={{ true: ACCENT }}
             />
           </View>
+        </View>
+
+        {/* Account & Privacy Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Account & Privacy</Text>
+          <TouchableOpacity
+            style={[styles.row, { borderBottomColor: isDark ? '#1C1917' : '#F5F5F4' }]}
+            onPress={() => router.push('/privacy-settings')}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <Lock size={20} color={isDark ? '#FFF' : '#000'} />
+              <Text style={[styles.label, { color: isDark ? '#FFF' : '#000' }]}>Messaging Privacy</Text>
+            </View>
+            <ChevronRight size={20} color="#888" />
+          </TouchableOpacity>
         </View>
 
         {/* Theme Section */}

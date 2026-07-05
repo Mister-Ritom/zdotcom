@@ -23,7 +23,8 @@ import { useEffect } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 
 import UploadStatusBanner from "@/components/upload/UploadStatusBanner";
-import { configureGoogleSignIn, useAuthStore } from "@/stores/useAuthStore";
+import { useAuthStore } from "@/stores/useAuthStore";
+import * as WebBrowser from "expo-web-browser";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -112,8 +113,7 @@ export default function RootLayout() {
   const isInitialized = useAuthStore((s) => s.isInitialized);
 
   useEffect(() => {
-    // Configure Google Sign-In (safe to call even in Expo Go — just won't work at runtime)
-    configureGoogleSignIn();
+    WebBrowser.maybeCompleteAuthSession();
 
     // Subscribe to Supabase auth state changes; returns unsubscribe fn
     const unsubscribe = initialize();

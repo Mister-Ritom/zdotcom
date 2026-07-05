@@ -1,6 +1,8 @@
 import { CommentsSheet } from "@/components/sheets/CommentsSheet";
 import { OptionsSheet } from "@/components/sheets/OptionsSheet";
+import { SendSheet } from "@/components/sheets/SendSheet";
 import { ShortVideoContainer } from "@/components/shorts/ShortVideoContainer";
+import { useAuthStore } from "@/stores/useAuthStore";
 import { useTabBarVisibility } from "@/contexts/TabBarVisibilityContext";
 import { useFeedStore } from "@/stores/useFeedStore";
 import BottomSheet from "@gorhom/bottom-sheet";
@@ -23,6 +25,7 @@ export default function ShortsScreen() {
   const { setTabBarHidden } = useTabBarVisibility();
 
   const { shorts, loadShorts, loadMoreShorts } = useFeedStore();
+  const { user: authUser } = useAuthStore();
   const [activeIndex, setActiveIndex] = useState(0);
   const [initialized, setInitialized] = useState(false);
 
@@ -38,7 +41,9 @@ export default function ShortsScreen() {
 
   const commentsSheetRef = useRef<BottomSheet>(null);
   const optionsSheetRef = useRef<BottomSheet>(null);
+  const sendSheetRef = useRef<BottomSheet>(null);
   const [activeZapId, setActiveZapId] = useState<string | null>(null);
+  const [activeZapText, setActiveZapText] = useState<string | undefined>(undefined);
 
   // Single focus/blur listener — plays when tab gains focus, pauses when it loses it
   useEffect(() => {
@@ -55,7 +60,7 @@ export default function ShortsScreen() {
   }, [navigation]);
 
   useEffect(() => {
-    loadShorts(true).then(() => setInitialized(true));
+    loadShorts(authUser?.id, true).then(() => setInitialized(true));
   }, []);
 
   // Index-based prefetch: when 3 items from the end of the loaded buffer,
@@ -66,7 +71,7 @@ export default function ShortsScreen() {
       shorts.zaps.length > 0 &&
       activeIndex >= shorts.zaps.length - PREFETCH_THRESHOLD
     ) {
-      loadMoreShorts();
+      loadMoreShorts(authUser?.id);
     }
   }, [activeIndex, shorts.zaps.length]);
 
@@ -145,13 +150,25 @@ export default function ShortsScreen() {
                     setTabBarHidden(true);
                     optionsSheetRef.current?.snapToIndex(0);
                   }}
+                  onOpenSend={() => {
+                    setActiveZapId(item.id);
+                    setActiveZapText(item.text);
+                    setTabBarHidden(true);
+                    sendSheetRef.current?.snapToIndex(0);
+                  }}
                 />
               </View>
             )}
           />
       </View>
       <CommentsSheet ref={commentsSheetRef} postId={activeZapId ?? ""} onClose={() => setTabBarHidden(false)} />
-      <OptionsSheet ref={optionsSheetRef} onClose={() => setTabBarHidden(false)} />
+      <OptionsSheet zapId={activeZapId} ref={optionsSheetRef} onClose={() => setTabBarHidden(false)} />
+      <SendSheet
+        ref={sendSheetRef}
+        zapId={activeZapId}
+        zapText={activeZapText}
+        onClose={() => setTabBarHidden(false)}
+      />
     </View>
   );
 }

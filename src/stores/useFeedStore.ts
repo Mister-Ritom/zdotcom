@@ -30,11 +30,11 @@ interface FeedStore {
   following: FeedSlice;
   shorts: FeedSlice;
 
-  loadForYou: (refresh?: boolean) => Promise<void>;
-  loadMoreForYou: () => Promise<void>;
+  loadForYou: (userId?: string, refresh?: boolean) => Promise<void>;
+  loadMoreForYou: (userId?: string) => Promise<void>;
   loadFollowing: (userId: string, refresh?: boolean) => Promise<void>;
-  loadShorts: (refresh?: boolean) => Promise<void>;
-  loadMoreShorts: () => Promise<void>;
+  loadShorts: (userId?: string, refresh?: boolean) => Promise<void>;
+  loadMoreShorts: (userId?: string) => Promise<void>;
 
   toggleLike: (zapId: string, userId: string, isShort?: boolean) => Promise<void>;
   toggleBookmark: (zapId: string, userId: string) => Promise<void>;
@@ -50,7 +50,7 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
   shorts: { ...INITIAL },
 
   // ── For You Feed ────────────────────────────────────────────────
-  async loadForYou(refresh = false) {
+  async loadForYou(userId?: string, refresh = false) {
     const slice = get().forYou;
     if (!refresh && (slice.isLoading || !slice.hasMore)) return;
 
@@ -61,6 +61,9 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
 
     try {
       const zaps = await zapService.getForYouFeed(false, PAGE_SIZE, page * PAGE_SIZE);
+      const likedIds = userId
+        ? await zapService.getLikedZapIds(userId, zaps.map((z) => z.id), false)
+        : new Set<string>();
       set((s) => ({
         forYou: {
           ...s.forYou,
@@ -69,6 +72,7 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
           isRefreshing: false,
           hasMore: zaps.length === PAGE_SIZE,
           page: page + 1,
+          likedIds: refresh ? likedIds : new Set([...s.forYou.likedIds, ...likedIds]),
         },
       }));
     } catch (e) {
@@ -77,8 +81,8 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
     }
   },
 
-  async loadMoreForYou() {
-    return get().loadForYou(false);
+  async loadMoreForYou(userId?: string) {
+    return get().loadForYou(userId, false);
   },
 
   // ── Following Feed ───────────────────────────────────────────────
@@ -109,7 +113,7 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
   },
 
   // ── Shorts Feed ─────────────────────────────────────────────────
-  async loadShorts(refresh = false) {
+  async loadShorts(userId?: string, refresh = false) {
     const slice = get().shorts;
     if (!refresh && (slice.isLoading || !slice.hasMore)) return;
 
@@ -120,6 +124,9 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
 
     try {
       const zaps = await zapService.getForYouFeed(true, PAGE_SIZE, page * PAGE_SIZE);
+      const likedIds = userId
+        ? await zapService.getLikedZapIds(userId, zaps.map((z) => z.id), true)
+        : new Set<string>();
       set((s) => ({
         shorts: {
           ...s.shorts,
@@ -128,6 +135,7 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
           isRefreshing: false,
           hasMore: zaps.length === PAGE_SIZE,
           page: page + 1,
+          likedIds: refresh ? likedIds : new Set([...s.shorts.likedIds, ...likedIds]),
         },
       }));
     } catch (e) {
@@ -136,8 +144,8 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
     }
   },
 
-  async loadMoreShorts() {
-    return get().loadShorts(false);
+  async loadMoreShorts(userId?: string) {
+    return get().loadShorts(userId, false);
   },
 
   // ── Interactions ────────────────────────────────────────────────

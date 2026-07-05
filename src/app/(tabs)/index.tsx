@@ -227,14 +227,14 @@ export default function HomeScreen() {
 
   // Initial load
   useEffect(() => {
-    loadForYou(true);
+    loadForYou(user?.id, true);
     if (user?.id) {
       loadFollowing(user.id, true);
       userService.getById(user.id).then(setProfile);
     }
   }, [user?.id]);
 
-  const handleForYouRefresh = useCallback(() => loadForYou(true), []);
+  const handleForYouRefresh = useCallback(() => loadForYou(user?.id, true), [user?.id]);
   const handleFollowingRefresh = useCallback(() => {
     if (user?.id) loadFollowing(user.id, true);
   }, [user?.id]);

@@ -57,7 +57,7 @@ export const userService = {
 
   async updateProfile(
     userId: string,
-    updates: { displayName?: string; bio?: string; profilePictureUrl?: string; coverPhotoUrl?: string }
+    updates: { displayName?: string; bio?: string; profilePictureUrl?: string; coverPhotoUrl?: string; messagePreference?: string }
   ): Promise<void> {
     try {
       const payload: Record<string, unknown> = {
@@ -67,6 +67,7 @@ export const userService = {
       if (updates.bio !== undefined) payload['bio'] = updates.bio;
       if (updates.profilePictureUrl !== undefined) payload['profile_picture_url'] = updates.profilePictureUrl;
       if (updates.coverPhotoUrl !== undefined) payload['cover_photo_url'] = updates.coverPhotoUrl;
+      if (updates.messagePreference !== undefined) payload['message_preference'] = updates.messagePreference;
 
       const { error } = await supabase.from('profiles').update(payload).eq('id', userId);
       if (error) throw error;

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator, Alert } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Send } from 'lucide-react-native';
@@ -91,11 +91,19 @@ export default function ChatScreen() {
     const msgText = text.trim();
     setText('');
 
-    await messageService.sendMessage({
+    const newMsg = await messageService.sendMessage({
       senderId: currentUser.id,
       recipients: [currentUser.id, recipientId],
       text: msgText,
     });
+
+    if (!newMsg) {
+      Alert.alert(
+        'Message Not Sent',
+        "The recipient's privacy settings restrict who can message them.",
+        [{ text: 'OK' }]
+      );
+    }
   };
 
   return (

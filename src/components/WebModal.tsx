@@ -3,7 +3,7 @@ import { Platform, Modal, View, Text, TouchableOpacity, StyleSheet, Pressable, F
 import BottomSheet, { BottomSheetProps, BottomSheetFlatList, BottomSheetTextInput, BottomSheetView, BottomSheetFooter, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { X } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { isDesktopWeb } from '@/utils/platform';
+import { isWeb } from '@/utils/platform';
 
 export interface WebModalProps extends BottomSheetProps {
   webTitle?: string;
@@ -143,20 +143,20 @@ NativeModal.displayName = 'NativeModal';
 
 // ─── Exported WebModal — delegates at module level, no conditional hooks ───────
 
-export const WebModal = isDesktopWeb ? DesktopWebModal : NativeModal;
+export const WebModal = isWeb ? DesktopWebModal : NativeModal;
 
-// Polyfills for inner components so we can use them in both Desktop Web (regular views) and Mobile/Native (BottomSheet views)
-export const ModalFlatList = isDesktopWeb ? FlatList : BottomSheetFlatList;
-export const ModalTextInput = isDesktopWeb ? TextInput : BottomSheetTextInput;
-export const ModalView = isDesktopWeb ? View : BottomSheetView;
+// Polyfills for inner components so we can use them in both Web (regular views) and Native (BottomSheet views)
+export const ModalFlatList = isWeb ? FlatList : BottomSheetFlatList;
+export const ModalTextInput = isWeb ? TextInput : BottomSheetTextInput;
+export const ModalView = isWeb ? View : BottomSheetView;
 
 const WebModalBackdrop = () => null;
 WebModalBackdrop.displayName = 'ModalBackdrop';
-export const ModalBackdrop = isDesktopWeb ? WebModalBackdrop : BottomSheetBackdrop;
+export const ModalBackdrop = isWeb ? WebModalBackdrop : BottomSheetBackdrop;
 
 const WebModalFooter = ({ children }: any) => <>{children}</>;
 WebModalFooter.displayName = 'ModalFooter';
-export const ModalFooter = isDesktopWeb ? WebModalFooter : BottomSheetFooter;
+export const ModalFooter = isWeb ? WebModalFooter : BottomSheetFooter;
 
 const styles = StyleSheet.create({
   webBackdrop: {

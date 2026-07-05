@@ -16,14 +16,14 @@ import { useEffect } from "react";
 import { Platform, StyleSheet, View } from "react-native";
 
 import UploadStatusBanner from "@/components/upload/UploadStatusBanner";
-import { configureGoogleSignIn, useAuthStore } from "@/stores/useAuthStore";
+import { useAuthStore } from "@/stores/useAuthStore";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 
+import WebSidebar from "@/components/WebSidebar";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useBreakpoint } from "@/hooks/useBreakpoint";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import WebSidebar from "@/components/WebSidebar";
-import { useBreakpoint } from "@/hooks/useBreakpoint";
 
 // Keep the splash screen visible until auth resolves
 SplashScreen.preventAutoHideAsync();
@@ -110,9 +110,7 @@ function WebLayoutContainer({ children }: { children: React.ReactNode }) {
   return (
     <View style={styles.webContainer}>
       {showSidebar && <WebSidebar />}
-      <View style={styles.mainContent}>
-        {children}
-      </View>
+      <View style={styles.mainContent}>{children}</View>
     </View>
   );
 }
@@ -123,9 +121,6 @@ export default function RootLayout() {
   const isInitialized = useAuthStore((s) => s.isInitialized);
 
   useEffect(() => {
-    // Configure Google Sign-In
-    configureGoogleSignIn();
-
     // Subscribe to Supabase auth state changes
     const unsubscribe = initialize();
     return unsubscribe;
@@ -139,7 +134,9 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={styles.root}>
-      <ThemeProvider value={colorScheme === "dark" ? CustomDarkTheme : CustomLightTheme}>
+      <ThemeProvider
+        value={colorScheme === "dark" ? CustomDarkTheme : CustomLightTheme}
+      >
         <BottomSheetModalProvider>
           <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
           <View style={styles.root}>

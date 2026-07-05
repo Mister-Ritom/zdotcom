@@ -15,40 +15,10 @@
 import { supabase } from "@/services/supabase";
 import { AppLogger } from "@/utils/logger";
 import { type Session, type User } from "@supabase/supabase-js";
-import Constants, { ExecutionEnvironment } from "expo-constants";
-import { Platform } from "react-native";
+import * as AuthSession from "expo-auth-session";
+import * as WebBrowser from "expo-web-browser";
+import * as Linking from "expo-linking";
 import { create } from "zustand";
-
-// ─── Google Sign-In Configuration ───────────────────────────────────────────
-const GOOGLE_WEB_CLIENT_ID =
-  "385298524193-oq78aoojbm5tmai0vijgnget0iqj1jth.apps.googleusercontent.com";
-const GOOGLE_IOS_CLIENT_ID =
-  "385298524193-89dvh6qif99gsopr625eapcp8audtrkc.apps.googleusercontent.com";
-const GOOGLE_ANDROID_CLIENT_ID =
-  "385298524193-c1srje861mofjtam1qaphjesd4nb1fqk.apps.googleusercontent.com";
-
-/**
- * Call once at app startup (inside root _layout.tsx) to configure Google Sign-In.
- */
-export function configureGoogleSignIn() {
-  const isExpoGo =
-    Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
-  if (isExpoGo) {
-    AppLogger.warn(
-      "AuthStore",
-      "Google Sign-In is not supported in Expo Go. Use a development build instead.",
-    );
-    return;
-  }
-  const { GoogleSignin } = require("@react-native-google-signin/google-signin");
-  GoogleSignin.configure({
-    webClientId: GOOGLE_WEB_CLIENT_ID,
-    iosClientId:
-      Platform.OS === "ios" ? GOOGLE_IOS_CLIENT_ID : GOOGLE_ANDROID_CLIENT_ID,
-    scopes: ["email", "profile"],
-    offlineAccess: false,
-  });
-}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface AuthState {
@@ -216,58 +186,41 @@ export const useAuthStore = create<AuthState & AuthActions>()((set, get) => ({
   signInWithGoogle: async () => {
     set({ isLoading: true });
     try {
-      await GoogleSignin.hasPlayServices();
-      const userInfo = await GoogleSignin.signIn();
-      const tokens = await GoogleSignin.getTokens();
-      const idToken = tokens.idToken;
-
-      if (!idToken) throw new Error("Google Sign-In: idToken is null");
-
-      const { data, error } = await supabase.auth.signInWithIdToken({
-        provider: "google",
-        token: idToken,
-        access_token: tokens.accessToken ?? undefined,
+      const redirectUrl = AuthSession.makeRedirectUri({
+        path: "/auth/callback",
       });
+
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: redirectUrl,
+          skipBrowserRedirect: true,
+        },
+      });
+
       if (error) throw error;
 
-      // Auto-create profile for new Google users
-      if (data.user) {
-        const displayName: string =
-          data.user.user_metadata?.["full_name"] ??
-          userInfo.data?.user?.name ??
-          "User";
-        let username = displayName.toLowerCase().replace(/\s+/g, "_");
+      if (data.url) {
+        const result = await WebBrowser.openAuthSessionAsync(
+          data.url,
+          redirectUrl
+        );
 
-        // Ensure username is unique (append random suffix if taken)
-        const { data: existing } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("id", data.user.id)
-          .maybeSingle();
-
-        if (!existing) {
-          // Check username availability and generate a unique one
-          const { data: usernameCheck } = await supabase
-            .from("profiles")
-            .select("username")
-            .eq("username", username)
-            .maybeSingle();
-
-          if (usernameCheck) {
-            username = `${username}_${Math.floor(Math.random() * 9000) + 1000}`;
+        if (result.type === "success") {
+          const parsedUrl = Linking.parse(result.url);
+          const code = parsedUrl.queryParams?.code;
+          if (typeof code === 'string') {
+            await supabase.auth.exchangeCodeForSession(code);
+            AppLogger.info("AuthStore", "Google sign in successful");
+          } else {
+            throw new Error("No code found in redirect URL");
           }
-
-          await supabase.from("profiles").insert({
-            id: data.user.id,
-            username,
-            display_name: displayName,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          });
+        } else if (result.type === "cancel") {
+          AppLogger.info("AuthStore", "Google sign in cancelled");
+        } else {
+          throw new Error("Google sign in failed or was dismissed");
         }
       }
-
-      AppLogger.info("AuthStore", "Google sign in successful");
     } catch (e) {
       AppLogger.error("AuthStore", "Google sign in failed", { error: e });
       throw e;
@@ -280,11 +233,6 @@ export const useAuthStore = create<AuthState & AuthActions>()((set, get) => ({
   signOut: async () => {
     set({ isLoading: true });
     try {
-      try {
-        await GoogleSignin.signOut();
-      } catch {
-        // Google sign out is best-effort (user may not have used Google)
-      }
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       AppLogger.info("AuthStore", "Sign out successful");
