@@ -37,6 +37,7 @@ interface Props {
   isActive: boolean; // true when this slide is the current page
   isLiked?: boolean;
   likesCount?: number;
+  commentsCount?: number;
   onLike?: () => void;
   onComment?: () => void;
   onSend?: () => void;
@@ -50,6 +51,7 @@ export function ShortVideoPlayer({
   isActive,
   isLiked = false,
   likesCount,
+  commentsCount,
   onLike,
   onComment,
   onSend,
@@ -230,7 +232,7 @@ export function ShortVideoPlayer({
         />
         <SideAction
           icon={<MessageCircle size={26} color="#fff" strokeWidth={2.5} />}
-          label={formatCount(zap.commentsCount)}
+          label={formatCount(commentsCount ?? zap.commentsCount)}
           onPress={onComment}
         />
         <SideAction

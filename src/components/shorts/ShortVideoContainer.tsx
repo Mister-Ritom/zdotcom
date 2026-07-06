@@ -36,6 +36,9 @@ export function ShortVideoContainer({
   const storeLikesCount = useFeedStore(
     (s) => s.shorts.zaps.find((z) => z.id === zap.id)?.likesCount ?? zap.likesCount
   );
+  const storeCommentsCount = useFeedStore(
+    (s) => s.shorts.zaps.find((z) => z.id === zap.id)?.commentsCount ?? zap.commentsCount
+  );
 
   useEffect(() => {
     userService.getById(zap.userId).then(setUser);
@@ -69,6 +72,7 @@ export function ShortVideoContainer({
       isActive={isActive}
       isLiked={liked}
       likesCount={storeLikesCount}
+      commentsCount={storeCommentsCount}
       onLike={handleLike}
       onComment={onOpenComments}
       onSend={onOpenSend}

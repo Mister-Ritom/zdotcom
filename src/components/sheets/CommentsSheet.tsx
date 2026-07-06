@@ -53,6 +53,7 @@ export const CommentsSheet = forwardRef<BottomSheet, CommentsSheetProps>(functio
     try {
       await zapService.addComment(postId, user.id, text.trim());
       setText('');
+      useFeedStore.getState().incrementCommentCount(postId);
       fetchComments();
     } catch (e) {
       console.error(e);
@@ -119,7 +120,7 @@ export const CommentsSheet = forwardRef<BottomSheet, CommentsSheetProps>(functio
           renderItem={({ item }) => (
             <View style={styles.commentItem}>
               <Text style={{ color: isDark ? '#A1A1AA' : '#52525B', fontSize: 13, fontWeight: 'bold' }}>
-                User {item.user_id?.substring(0, 4)}...
+                @{item.profiles?.username ?? item.user_id?.substring(0, 4)}
               </Text>
               <Text style={{ color: isDark ? '#F4F4F5' : '#18181B', marginTop: 4 }}>
                 {item.text}

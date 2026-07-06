@@ -47,6 +47,7 @@ interface FeedStore {
   setLiked: (zapId: string, liked: boolean) => void;
   setReshared: (zapId: string, reshared: boolean) => void;
   setBookmarked: (zapId: string, bookmarked: boolean) => void;
+  incrementCommentCount: (zapId: string) => void;
 }
 
 // Helper: batch-fetch liked + reshared IDs for a set of zaps in parallel
@@ -276,5 +277,15 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
       bookmarked ? ids.add(zapId) : ids.delete(zapId);
       return { forYou: { ...s.forYou, bookmarkedIds: ids } };
     });
+  },
+
+  incrementCommentCount(zapId) {
+    const updateCount = (z: ZapModel) =>
+      z.id === zapId ? { ...z, commentsCount: z.commentsCount + 1 } : z;
+    set((s) => ({
+      forYou: { ...s.forYou, zaps: s.forYou.zaps.map(updateCount) },
+      following: { ...s.following, zaps: s.following.zaps.map(updateCount) },
+      shorts: { ...s.shorts, zaps: s.shorts.zaps.map(updateCount) },
+    }));
   },
 }));

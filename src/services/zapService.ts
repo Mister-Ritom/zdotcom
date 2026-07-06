@@ -246,7 +246,7 @@ export const zapService = {
     try {
       const { data, error } = await supabase
         .from('comments')
-        .select('*')
+        .select('*, profiles:user_id(username, display_name)')
         .eq('post_id', postId)
         .order('created_at', { ascending: false })
         .range(offset, offset + limit - 1);
@@ -267,12 +267,7 @@ export const zapService = {
         p_id: postId,
         p_amount: 1,
       });
-      await supabase.rpc('increment_counter', {
-        p_table: 'shorts',
-        p_column: 'comments_count',
-        p_id: postId,
-        p_amount: 1,
-      });
+      // Shorts and Zaps both live in the 'zaps' table, so one increment is enough.
     } catch (e) {
       AppLogger.error('ZapService', 'addComment failed', e);
       throw e;
@@ -350,6 +345,16 @@ export const zapService = {
         p_id: zap.userId,
         p_amount: 1,
       });
+
+      // Increment replies_count on parent zap if it's a reply
+      if (zap.parentZapId) {
+        await supabase.rpc('increment_counter', {
+          p_table: 'zaps',
+          p_column: 'replies_count',
+          p_id: zap.parentZapId,
+          p_amount: 1,
+        });
+      }
     } catch (e) {
       AppLogger.error('ZapService', 'createZap failed', e);
       throw e;
