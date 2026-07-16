@@ -5,11 +5,14 @@ import { storyService } from '@/services/storyService';
 import { userService } from '@/services/userService';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { type GroupedStories } from '@/types/models';
+import { StoryViewer } from '@/components/stories/StoryViewer';
 
 export function StoriesRail() {
   const { user } = useAuthStore();
   const [groups, setGroups] = useState<GroupedStories[]>([]);
   const [loading, setLoading] = useState(true);
+  const [viewerVisible, setViewerVisible] = useState(false);
+  const [viewerStart, setViewerStart] = useState(0);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -37,9 +40,22 @@ export function StoriesRail() {
     >
       {/* Add story button */}
       <StoryRing isAddButton onPress={() => { /* navigate to create story */ }} />
-      {groups.map((g) => (
-        <StoryRing key={g.userId} group={g} onPress={() => { /* navigate to story viewer */ }} />
+      {groups.map((g, index) => (
+        <StoryRing 
+          key={g.userId} 
+          group={g} 
+          onPress={() => {
+            setViewerStart(index);
+            setViewerVisible(true);
+          }} 
+        />
       ))}
+      <StoryViewer
+        groups={groups}
+        startGroupIndex={viewerStart}
+        visible={viewerVisible}
+        onClose={() => setViewerVisible(false)}
+      />
     </ScrollView>
   );
 }

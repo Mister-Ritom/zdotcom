@@ -11,6 +11,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Image } from 'expo-image';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import { Ellipsis, X } from 'lucide-react-native';
 import { Avatar } from '@/components/common/Avatar';
 import { type GroupedStories, type StoryModel, type UserModel } from '@/types/models';
@@ -26,6 +27,14 @@ interface Props {
   startGroupIndex?: number;
   visible: boolean;
   onClose: () => void;
+}
+
+function StoryVideo({ uri }: { uri: string }) {
+  const player = useVideoPlayer(uri, (p) => {
+    p.loop = true;
+    p.play();
+  });
+  return <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="contain" nativeControls={false} />;
 }
 
 export function StoryViewer({ groups, startGroupIndex = 0, visible, onClose }: Props) {
@@ -65,6 +74,13 @@ export function StoryViewer({ groups, startGroupIndex = 0, visible, onClose }: P
   }, [progressAnim, storyIndex, groupIndex]);
 
   useEffect(() => {
+    if (visible) {
+      setGroupIndex(startGroupIndex);
+      setStoryIndex(0);
+    }
+  }, [visible, startGroupIndex]);
+
+  useEffect(() => {
     if (visible && currentStory) {
       startProgress();
     }
@@ -99,6 +115,8 @@ export function StoryViewer({ groups, startGroupIndex = 0, visible, onClose }: P
     }
   }, [storyIndex, groupIndex, progressAnim, startProgress]);
 
+  const isVideo = currentStory?.mediaUrl?.match(/\.(mp4|mov|m4v|webm)(\?.*)?$/i);
+
   if (!visible) return null;
 
   return (
@@ -114,14 +132,16 @@ export function StoryViewer({ groups, startGroupIndex = 0, visible, onClose }: P
             blurRadius={50}
           />
         )}
-        {/* Foreground complete image */}
-        {currentStory && (
+        {/* Foreground complete media */}
+        {currentStory && isVideo ? (
+          <StoryVideo uri={currentStory.mediaUrl} />
+        ) : currentStory ? (
           <Image
             source={{ uri: currentStory.mediaUrl }}
             style={StyleSheet.absoluteFill}
             contentFit="contain"
           />
-        )}
+        ) : null}
         <View style={[StyleSheet.absoluteFill, styles.scrim]} />
 
         {/* Progress bars */}
