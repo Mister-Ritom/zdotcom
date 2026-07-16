@@ -297,8 +297,8 @@ export default function SignUpScreen() {
           <View style={styles.gap12} />
           <Text style={[styles.legalText, { color: c.textSecondary }]}>
             By signing up, you accept the{" "}
-            <Text style={styles.legalLink}>Privacy Policy</Text> and{" "}
-            <Text style={styles.legalLink}>Terms & Conditions</Text>.
+            <Text style={styles.legalLink} onPress={() => router.push('/privacy' as never)}>Privacy Policy</Text> and{" "}
+            <Text style={styles.legalLink} onPress={() => router.push('/terms' as never)}>Terms & Conditions</Text>.
           </Text>
 
           <View style={styles.gap16} />

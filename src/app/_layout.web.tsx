@@ -53,9 +53,11 @@ function AuthGuard() {
 
     const inAuthGroup = (segments[0] as string) === "(auth)";
 
+    const isPublicRoute = segments[0] === 'privacy' || segments[0] === 'terms';
+
     if (!user) {
-      // Redirect to login if they are not in the auth group
-      if (!inAuthGroup) {
+      // Redirect to login if they are not in the auth group and not a public route
+      if (!inAuthGroup && !isPublicRoute) {
         if (hasSeenOnboarding) {
           router.replace("/(auth)/login");
         } else {
