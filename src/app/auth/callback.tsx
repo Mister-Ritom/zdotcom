@@ -1,5 +1,5 @@
-import { View, ActivityIndicator, StyleSheet } from "react-native";
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { ActivityIndicator, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function AuthCallback() {

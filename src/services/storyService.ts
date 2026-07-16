@@ -76,6 +76,34 @@ export const storyService = {
       throw e;
     }
   },
+
+  async deleteStory(storyId: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('stories')
+        .update({ is_deleted: true })
+        .eq('id', storyId);
+      if (error) throw error;
+      AppLogger.info('StoryService', `Soft-deleted story ${storyId}`);
+    } catch (e) {
+      AppLogger.error('StoryService', 'deleteStory failed', e);
+      throw e;
+    }
+  },
+
+  async updateStory(storyId: string, caption: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('stories')
+        .update({ caption })
+        .eq('id', storyId);
+      if (error) throw error;
+      AppLogger.info('StoryService', `Updated story ${storyId}`);
+    } catch (e) {
+      AppLogger.error('StoryService', 'updateStory failed', e);
+      throw e;
+    }
+  },
 };
 
 function groupByUser(stories: StoryModel[]): GroupedStories[] {

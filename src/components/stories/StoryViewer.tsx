@@ -11,10 +11,12 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { X } from 'lucide-react-native';
+import { Ellipsis, X } from 'lucide-react-native';
 import { Avatar } from '@/components/common/Avatar';
 import { type GroupedStories, type StoryModel, type UserModel } from '@/types/models';
 import { userService } from '@/services/userService';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { useOptionsSheet } from '@/contexts/OptionsSheetContext';
 
 const { width: W, height: H } = Dimensions.get('window');
 const STORY_DURATION = 5000; // 5 seconds each
@@ -32,10 +34,13 @@ export function StoryViewer({ groups, startGroupIndex = 0, visible, onClose }: P
   const [users, setUsers] = useState<Map<string, UserModel>>(new Map());
   const progressAnim = useRef(new Animated.Value(0)).current;
   const timerRef = useRef<ReturnType<typeof Animated.timing> | null>(null);
+  const { user: authUser } = useAuthStore();
+  const { showOptions } = useOptionsSheet();
 
   const currentGroup = groups[groupIndex];
   const currentStory: StoryModel | undefined = currentGroup?.stories[storyIndex];
   const currentUser = users.get(currentGroup?.userId ?? '');
+  const isOwner = authUser?.id === currentGroup?.userId;
 
   // Pre-fetch users
   useEffect(() => {
@@ -100,12 +105,21 @@ export function StoryViewer({ groups, startGroupIndex = 0, visible, onClose }: P
     <Modal visible={visible} animationType="fade" statusBarTranslucent onRequestClose={onClose}>
       <StatusBar hidden />
       <View style={styles.container}>
-        {/* Background image */}
+        {/* Blurred Background image */}
         {currentStory && (
           <Image
             source={{ uri: currentStory.mediaUrl }}
             style={StyleSheet.absoluteFill}
             contentFit="cover"
+            blurRadius={50}
+          />
+        )}
+        {/* Foreground complete image */}
+        {currentStory && (
+          <Image
+            source={{ uri: currentStory.mediaUrl }}
+            style={StyleSheet.absoluteFill}
+            contentFit="contain"
           />
         )}
         <View style={[StyleSheet.absoluteFill, styles.scrim]} />
@@ -146,9 +160,28 @@ export function StoryViewer({ groups, startGroupIndex = 0, visible, onClose }: P
               </Text>
             )}
           </View>
-          <TouchableOpacity onPress={onClose} hitSlop={16}>
-            <X size={24} color="#fff" strokeWidth={2.5} />
-          </TouchableOpacity>
+          <View style={styles.topBarActions}>
+            {isOwner && currentStory && (
+              <TouchableOpacity
+                onPress={() => {
+                  showOptions({
+                    zapId: currentStory.id,
+                    contentType: 'story',
+                    isOwner: true,
+                    currentText: currentStory.caption,
+                    onClose: onClose,
+                  });
+                }}
+                hitSlop={16}
+                style={styles.topBarBtn}
+              >
+                <Ellipsis size={22} color="#fff" strokeWidth={2} />
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity onPress={onClose} hitSlop={16} style={styles.topBarBtn}>
+              <X size={24} color="#fff" strokeWidth={2.5} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Caption */}
@@ -202,6 +235,8 @@ const styles = StyleSheet.create({
     gap: 10,
     zIndex: 10,
   },
+  topBarActions: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  topBarBtn: { padding: 4 },
   userInfo: { flex: 1 },
   username: { color: '#fff', fontWeight: '700', fontSize: 14 },
   time: { color: 'rgba(255,255,255,0.7)', fontSize: 11, marginTop: 1 },

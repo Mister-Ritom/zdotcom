@@ -48,6 +48,9 @@ interface FeedStore {
   setReshared: (zapId: string, reshared: boolean) => void;
   setBookmarked: (zapId: string, bookmarked: boolean) => void;
   incrementCommentCount: (zapId: string) => void;
+  removeZap: (zapId: string) => void;
+  updateZapContent: (zapId: string, text: string, mediaUrls?: string[]) => void;
+  deletedIds: Set<string>;
 }
 
 // Helper: batch-fetch liked + reshared IDs for a set of zaps in parallel
@@ -63,6 +66,7 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
   forYou: { ...INITIAL },
   following: { ...INITIAL },
   shorts: { ...INITIAL },
+  deletedIds: new Set<string>(),
 
   // ── For You Feed ────────────────────────────────────────────────
   async loadForYou(userId?: string, refresh = false) {
@@ -286,6 +290,28 @@ export const useFeedStore = create<FeedStore>((set, get) => ({
       forYou: { ...s.forYou, zaps: s.forYou.zaps.map(updateCount) },
       following: { ...s.following, zaps: s.following.zaps.map(updateCount) },
       shorts: { ...s.shorts, zaps: s.shorts.zaps.map(updateCount) },
+    }));
+  },
+
+  removeZap(zapId) {
+    set((s) => {
+      const newDeletedIds = new Set(s.deletedIds);
+      newDeletedIds.add(zapId);
+      return {
+        deletedIds: newDeletedIds,
+        forYou: { ...s.forYou, zaps: s.forYou.zaps.filter((z) => z.id !== zapId) },
+        following: { ...s.following, zaps: s.following.zaps.filter((z) => z.id !== zapId) },
+        shorts: { ...s.shorts, zaps: s.shorts.zaps.filter((z) => z.id !== zapId) },
+      };
+    });
+  },
+
+  updateZapContent(zapId, text, mediaUrls) {
+    const applyUpdate = (z: ZapModel) => z.id === zapId ? { ...z, text, ...(mediaUrls ? { mediaUrls } : {}) } : z;
+    set((s) => ({
+      forYou: { ...s.forYou, zaps: s.forYou.zaps.map(applyUpdate) },
+      following: { ...s.following, zaps: s.following.zaps.map(applyUpdate) },
+      shorts: { ...s.shorts, zaps: s.shorts.zaps.map(applyUpdate) },
     }));
   },
 }));

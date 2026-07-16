@@ -1,10 +1,10 @@
 import { CommentsSheet } from "@/components/sheets/CommentsSheet";
-import { OptionsSheet } from "@/components/sheets/OptionsSheet";
 import { SendSheet } from "@/components/sheets/SendSheet";
 import { ShortVideoContainer } from "@/components/shorts/ShortVideoContainer";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useTabBarVisibility } from "@/contexts/TabBarVisibilityContext";
 import { useFeedStore } from "@/stores/useFeedStore";
+import { useOptionsSheet } from "@/contexts/OptionsSheetContext";
 import BottomSheet from "@gorhom/bottom-sheet";
 import { useNavigation } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -23,6 +23,7 @@ export default function ShortsScreen() {
   // Start as false — videos must NOT play until the shorts tab gains focus
   const [isFocused, setIsFocused] = useState(false);
   const { setTabBarHidden } = useTabBarVisibility();
+  const { showOptions } = useOptionsSheet();
 
   const { shorts, loadShorts, loadMoreShorts } = useFeedStore();
   const { user: authUser } = useAuthStore();
@@ -40,7 +41,6 @@ export default function ShortsScreen() {
   const itemH = windowH;
 
   const commentsSheetRef = useRef<BottomSheet>(null);
-  const optionsSheetRef = useRef<BottomSheet>(null);
   const sendSheetRef = useRef<BottomSheet>(null);
   const [activeZapId, setActiveZapId] = useState<string | null>(null);
   const [activeZapText, setActiveZapText] = useState<string | undefined>(undefined);
@@ -148,7 +148,13 @@ export default function ShortsScreen() {
                   onOpenOptions={() => {
                     setActiveZapId(item.id);
                     setTabBarHidden(true);
-                    optionsSheetRef.current?.snapToIndex(0);
+                    showOptions({
+                      zapId: item.id,
+                      contentType: 'short',
+                      isOwner: authUser?.id === item.userId,
+                      currentText: item.text,
+                      onClose: () => setTabBarHidden(false),
+                    });
                   }}
                   onOpenSend={() => {
                     setActiveZapId(item.id);
@@ -162,7 +168,6 @@ export default function ShortsScreen() {
           />
       </View>
       <CommentsSheet ref={commentsSheetRef} postId={activeZapId ?? ""} onClose={() => setTabBarHidden(false)} />
-      <OptionsSheet zapId={activeZapId} ref={optionsSheetRef} onClose={() => setTabBarHidden(false)} />
       <SendSheet
         ref={sendSheetRef}
         zapId={activeZapId}

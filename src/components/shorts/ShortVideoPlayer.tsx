@@ -20,6 +20,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const ACCENT = "#208AEF";
 
@@ -67,6 +68,10 @@ export function ShortVideoPlayer({
 
   const [tempVisible, setTempVisible] = useState(false);
   const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const insets = useSafeAreaInsets();
+  const BASE_TAB_BAR_HEIGHT = Platform.OS === "ios" ? 49 : 60;
+  const bottomOffset = insets.bottom + BASE_TAB_BAR_HEIGHT + 20;
 
   const showControlsTemporarily = useCallback(() => {
     setTempVisible(true);
@@ -207,7 +212,7 @@ export function ShortVideoPlayer({
       </TouchableOpacity>
 
       {/* Right actions column */}
-      <View style={styles.actions}>
+      <View style={[styles.actions, { bottom: bottomOffset }]}>
         {/* Avatar */}
         <TouchableOpacity onPress={onProfilePress} style={styles.avatarWrap}>
           <Avatar
@@ -248,7 +253,7 @@ export function ShortVideoPlayer({
       </View>
 
       {/* Bottom overlay — creator info + caption */}
-      <View style={styles.bottomOverlay}>
+      <View style={[styles.bottomOverlay, { bottom: bottomOffset }]}>
         <TouchableOpacity onPress={onProfilePress} style={styles.creatorRow}>
           <Text style={styles.creatorName}>@{user?.username ?? "..."}</Text>
           {user?.isVerified && (
@@ -337,7 +342,6 @@ const styles = StyleSheet.create({
   actions: {
     position: "absolute",
     right: 12,
-    bottom: 90,
     alignItems: "center",
     gap: 16,
   },
@@ -355,7 +359,6 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: 16,
     right: 80,
-    bottom: 90,
   },
   creatorRow: {
     flexDirection: "row",

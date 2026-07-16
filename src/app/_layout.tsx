@@ -30,6 +30,7 @@ import { useSettingsStore } from "@/stores/useSettingsStore";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { GlobalOptionsSheet } from "@/components/GlobalOptionsSheet";
 
 // Keep the splash screen visible until auth resolves
 SplashScreen.preventAutoHideAsync();
@@ -130,12 +131,14 @@ export default function RootLayout() {
     <GestureHandlerRootView style={styles.root}>
       <ThemeProvider value={colorScheme === "dark" ? CustomDarkTheme : CustomLightTheme}>
         <BottomSheetModalProvider>
-          <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
-          <View style={styles.root}>
-            <InitialLayout />
-            {/* Global upload progress banner — floats above all screens */}
-            <UploadStatusBanner />
-          </View>
+          <GlobalOptionsSheet>
+            <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+            <View style={styles.root}>
+              <InitialLayout />
+              {/* Global upload progress banner — floats above all screens */}
+              <UploadStatusBanner />
+            </View>
+          </GlobalOptionsSheet>
         </BottomSheetModalProvider>
       </ThemeProvider>
     </GestureHandlerRootView>

@@ -5,7 +5,7 @@ import { userService } from '@/services/userService';
 import { zapService } from '@/services/zapService';
 import { ZapCard } from '@/components/feed/ZapCard';
 import { type ZapModel, type UserModel } from '@/types/models';
-import { OptionsSheet } from '@/components/sheets/OptionsSheet';
+import { useOptionsSheet } from '@/contexts/OptionsSheetContext';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { useTabBarVisibility } from '@/contexts/TabBarVisibilityContext';
 import { useFeedStore } from '@/stores/useFeedStore';
@@ -20,8 +20,11 @@ export function ZapCardContainer({ zap, isShort = false, onPress }: Props) {
   const [user, setUser] = useState<UserModel | null>(null);
   const { user: authUser } = useAuthStore();
   const [bookmarked, setBookmarked] = useState(false);
-  const optionsSheetRef = useRef<BottomSheet>(null);
+  const { showOptions } = useOptionsSheet();
   const { setTabBarHidden } = useTabBarVisibility();
+  const { deletedIds } = useFeedStore();
+
+  const isDeleted = deletedIds.has(zap.id);
 
   // Drive liked/rezapped state and counts from the store so they are consistent
   // across remounts and reflect the seeded server state on load.
@@ -29,16 +32,14 @@ export function ZapCardContainer({ zap, isShort = false, onPress }: Props) {
   const liked = useFeedStore((s) => s.forYou.likedIds.has(zap.id) || s.following.likedIds.has(zap.id) || s.shorts.likedIds.has(zap.id));
   const boosted = useFeedStore((s) => s.forYou.resharedIds.has(zap.id) || s.following.resharedIds.has(zap.id) || s.shorts.resharedIds.has(zap.id));
 
-  const likesCount = useFeedStore(
-    (s) =>
-      [...s.forYou.zaps, ...s.following.zaps, ...s.shorts.zaps].find((z) => z.id === zap.id)
-        ?.likesCount ?? zap.likesCount
+  // Try to find the latest zap from the store if we have it, otherwise fallback to prop
+  const storeZap = useFeedStore((s) =>
+    [...s.forYou.zaps, ...s.following.zaps, ...s.shorts.zaps].find((z) => z.id === zap.id)
   );
-  const rezapsCount = useFeedStore(
-    (s) =>
-      [...s.forYou.zaps, ...s.following.zaps, ...s.shorts.zaps].find((z) => z.id === zap.id)
-        ?.rezapsCount ?? zap.rezapsCount
-  );
+  const displayZap = storeZap ?? zap;
+
+  const likesCount = displayZap.likesCount;
+  const rezapsCount = displayZap.rezapsCount;
 
   useEffect(() => {
     userService.getById(zap.userId).then(setUser);
@@ -87,27 +88,35 @@ export function ZapCardContainer({ zap, isShort = false, onPress }: Props) {
     });
   });
 
+  if (isDeleted) return null;
+
   return (
     <>
       <ZapCard
-        zap={zap}
+        zap={displayZap}
         user={user}
         isLiked={liked}
         isBookmarked={bookmarked}
         isBoosted={boosted}
         likesCount={likesCount}
         rezapsCount={rezapsCount}
-        disableBoost={authUser?.id === zap.userId}
+        disableBoost={authUser?.id === displayZap.userId}
         onPress={handlePress}
         onLike={handleLike}
         onBookmark={handleBookmark}
         onBoost={handleBoost}
         onOptions={() => {
           setTabBarHidden(true);
-          optionsSheetRef.current?.snapToIndex(0);
+          showOptions({
+            zapId: displayZap.id,
+            contentType: isShort ? 'short' : 'zap',
+            isOwner: authUser?.id === displayZap.userId,
+            currentText: displayZap.text,
+            currentMediaUrls: displayZap.mediaUrls,
+            onClose: () => setTabBarHidden(false),
+          });
         }}
       />
-      <OptionsSheet ref={optionsSheetRef} onClose={() => setTabBarHidden(false)} />
     </>
   );
 }

@@ -394,6 +394,38 @@ export const zapService = {
     }
   },
 
+  async deleteZap(zapId: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('zaps')
+        .update({ is_deleted: true })
+        .eq('id', zapId);
+      if (error) throw error;
+      AppLogger.info('ZapService', `Soft-deleted zap ${zapId}`);
+    } catch (e) {
+      AppLogger.error('ZapService', 'deleteZap failed', e);
+      throw e;
+    }
+  },
+
+  async updateZap(zapId: string, text: string, mediaUrls?: string[]): Promise<void> {
+    try {
+      const payload: Record<string, any> = { text, updated_at: new Date().toISOString() };
+      if (mediaUrls) {
+        payload.media_urls = mediaUrls;
+      }
+      const { error } = await supabase
+        .from('zaps')
+        .update(payload)
+        .eq('id', zapId);
+      if (error) throw error;
+      AppLogger.info('ZapService', `Updated zap ${zapId}`);
+    } catch (e) {
+      AppLogger.error('ZapService', 'updateZap failed', e);
+      throw e;
+    }
+  },
+
   async getBookmarkedZaps(userId: string): Promise<ZapModel[]> {
     try {
       const { data: bookmarkData, error: bookmarkError } = await supabase

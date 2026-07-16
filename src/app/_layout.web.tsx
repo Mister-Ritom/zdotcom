@@ -1,7 +1,6 @@
-/**
- * Root layout for Web — includes WebSidebar for desktop web.
- */
-
+import UploadStatusBanner from "@/components/upload/UploadStatusBanner";
+import { useAuthStore } from "@/stores/useAuthStore";
+import { useSettingsStore } from "@/stores/useSettingsStore";
 import {
   DarkTheme,
   DefaultTheme,
@@ -14,10 +13,6 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { Platform, StyleSheet, View } from "react-native";
-
-import UploadStatusBanner from "@/components/upload/UploadStatusBanner";
-import { useAuthStore } from "@/stores/useAuthStore";
-import { useSettingsStore } from "@/stores/useSettingsStore";
 
 import WebSidebar from "@/components/WebSidebar";
 import { useColorScheme } from "@/hooks/use-color-scheme";

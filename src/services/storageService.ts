@@ -16,6 +16,7 @@ import { storyService } from "@/services/storyService";
 import { supabase, SUPABASE_ANON_KEY, SUPABASE_URL } from "@/services/supabase";
 import { zapService } from "@/services/zapService";
 import { useUploadStore } from "@/stores/useUploadStore";
+import { useFeedStore } from "@/stores/useFeedStore";
 import { AppLogger } from "@/utils/logger";
 import { File, UploadType } from "expo-file-system";
 import { Platform } from "react-native";
@@ -139,6 +140,16 @@ export interface PostUploadJob {
   isShort: boolean;
 }
 
+export interface PostUpdateJob {
+  type: "update_post";
+  jobId: string;
+  userId: string;
+  zapId: string;
+  text: string;
+  // A mix of old remote URLs and new local URIs
+  mediaItems: { uri: string; isRemote: boolean }[];
+}
+
 export interface StoryUploadJob {
   type: "story";
   jobId: string;
@@ -241,6 +252,70 @@ export async function runPostUploadJob(job: PostUploadJob): Promise<void> {
     const msg = e?.message ?? "Upload failed";
     store.setError(job.jobId, msg);
     AppLogger.error(TAG, `Post job ${job.jobId} failed during execution`, e);
+  }
+}
+
+/**
+ * Runs a post update job in the background.
+ * Uploads any new local media, combines with existing remote media,
+ * updates the database, and updates the local store.
+ */
+export async function runPostUpdateJob(job: PostUpdateJob): Promise<void> {
+  const store = useUploadStore.getState();
+  store.setUploading(job.jobId, 0);
+
+  AppLogger.info(
+    TAG,
+    `Starting post update job [${job.jobId}] for zap [${job.zapId}]. Media count: ${job.mediaItems.length}`,
+  );
+
+  try {
+    const bucket: UploadBucket = "zap_media";
+    const totalFiles = job.mediaItems.length;
+    const progressArray = new Array(totalFiles).fill(0);
+    const finalUrls: string[] = new Array(totalFiles);
+
+    if (totalFiles > 0) {
+      const uploadPromises = job.mediaItems.map(async (item, index) => {
+        if (item.isRemote) {
+          // Already uploaded, keep the URL
+          finalUrls[index] = item.uri;
+          progressArray[index] = 100;
+          return Promise.resolve();
+        }
+
+        try {
+          const url = await uploadFile(item.uri, job.userId, bucket, (pct) => {
+            progressArray[index] = pct;
+            const sumProgress = progressArray.reduce((sum, p) => sum + p, 0);
+            const averageProgress = sumProgress / totalFiles;
+            store.setUploading(job.jobId, Math.round(averageProgress * 0.8));
+          });
+          finalUrls[index] = url;
+        } catch (fileError: any) {
+          throw new Error(`File upload failed: ${fileError?.message || String(fileError)}`);
+        }
+      });
+
+      await Promise.all(uploadPromises);
+    }
+
+    store.setUploading(job.jobId, 85);
+    
+    // Clean array (filter out undefined just in case)
+    const validUrls = finalUrls.filter(Boolean);
+
+    await zapService.updateZap(job.zapId, job.text, validUrls);
+
+    // Update the local feed store instantly
+    useFeedStore.getState().updateZapContent(job.zapId, job.text, validUrls);
+
+    store.setDone(job.jobId);
+    AppLogger.info(TAG, `Post update job ${job.jobId} completed successfully`);
+  } catch (e: any) {
+    const msg = e?.message ?? "Update failed";
+    store.setError(job.jobId, msg);
+    AppLogger.error(TAG, `Post update job ${job.jobId} failed during execution`, e);
   }
 }
 
