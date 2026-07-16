@@ -1,13 +1,17 @@
 import { Image } from "expo-image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  Animated,
   PixelRatio,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
   View,
 } from "react-native";
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withSpring,
+} from "react-native-reanimated";
 import { MediaViewerModal } from "./MediaViewerModal";
 import { ZapVideoPlayer } from "./ZapVideoPlayer";
 
@@ -38,20 +42,18 @@ export function MediaCarousel({
   const [viewerIndex, setViewerIndex] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
 
-  const [heightAnim] = useState(
-    () => new Animated.Value(clampHeight(DEFAULT_RATIO, 300, maxHeight))
-  );
+  const heightAnim = useSharedValue(clampHeight(DEFAULT_RATIO, 300, maxHeight));
 
   useEffect(() => {
     if (scrollWidth === 0) return;
     const ratio = aspectRatios[currentIndex] ?? DEFAULT_RATIO;
     const target = clampHeight(ratio, scrollWidth, maxHeight);
-    Animated.timing(heightAnim, {
-      toValue: target,
-      duration: 250,
-      useNativeDriver: false,
-    }).start();
-  }, [currentIndex, aspectRatios, scrollWidth, maxHeight, heightAnim]);
+    heightAnim.value = withSpring(target, { damping: 20, stiffness: 200, mass: 0.8 });
+  }, [currentIndex, aspectRatios, scrollWidth, maxHeight]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    height: heightAnim.value,
+  }));
 
   const handleScroll = useCallback(
     (e: any) => {
@@ -89,7 +91,7 @@ export function MediaCarousel({
 
   return (
     <View style={[styles.wrapper, { borderRadius }]}>
-      <Animated.View style={[styles.animatedContainer, { height: heightAnim }]}>
+      <Animated.View style={[styles.animatedContainer, animatedStyle]}>
         <ScrollView
           ref={scrollRef}
           horizontal
