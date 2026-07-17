@@ -55,7 +55,7 @@ export function MediaCarousel({
     height: heightAnim.value,
   }));
 
-  const handleScroll = useCallback(
+  const handleScrollEnd = useCallback(
     (e: any) => {
       if (scrollWidth === 0) return;
       const x = e.nativeEvent.contentOffset.x;
@@ -97,10 +97,21 @@ export function MediaCarousel({
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
-          onScroll={handleScroll}
+          onMomentumScrollEnd={handleScrollEnd}
+          onScrollEndDrag={(e) => {
+            // Only handle drag end if there is no momentum to follow
+            if (e.nativeEvent.velocity?.x === 0) {
+              handleScrollEnd(e);
+            }
+          }}
           scrollEventThrottle={16}
           style={{ flex: 1 }}
-          onLayout={(e) => setScrollWidth(PixelRatio.roundToNearestPixel(e.nativeEvent.layout.width))}
+          onLayout={(e) => {
+            const w = PixelRatio.roundToNearestPixel(e.nativeEvent.layout.width);
+            if (Math.abs(scrollWidth - w) > 1) {
+              setScrollWidth(w);
+            }
+          }}
         >
           {scrollWidth > 0 && mediaUrls.map((url, index) => (
             <TouchableOpacity
@@ -119,7 +130,6 @@ export function MediaCarousel({
                   source={{ uri: url }}
                   style={styles.image}
                   contentFit="cover"
-                  transition={300}
                   onLoad={(e) => handleImageLoad(index, e)}
                 />
               )}

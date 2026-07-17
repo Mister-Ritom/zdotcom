@@ -6,13 +6,13 @@ import {
   Modal,
   PixelRatio,
   Pressable,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { ZapVideoPlayer } from "./ZapVideoPlayer";
 
 const isVideo = (url: string) => url.toLowerCase().includes(".mp4");
