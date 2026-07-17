@@ -46,5 +46,5 @@ example
 credentials.json
 google-play-service-account.json
 
-images/
-scripts/
+/images/
+/scripts/
