@@ -66,10 +66,11 @@ function AuthGuard() {
     const inAuthGroup = (segments[0] as string) === "(auth)";
 
     const isPublicRoute = segments[0] === 'privacy' || segments[0] === 'terms';
+    const isAuthCallback = segments[0] === 'auth' && segments[1] === 'callback';
 
     if (!user) {
-      // Redirect to login if they are not in the auth group and not a public route
-      if (!inAuthGroup && !isPublicRoute) {
+      // Redirect to login if they are not in the auth group, not a public route, and not on the callback page resolving auth
+      if (!inAuthGroup && !isPublicRoute && !isAuthCallback) {
         if (hasSeenOnboarding) {
           router.replace("/(auth)/login");
         } else {
@@ -77,9 +78,9 @@ function AuthGuard() {
         }
       }
     } else {
-      // Redirect to tabs if they are in the auth group or at root
+      // Redirect to tabs if they are in the auth group, at root, or on the auth callback page
       const atRoot = !segments[0] || (segments[0] as string) === "index";
-      if (inAuthGroup || atRoot) {
+      if (inAuthGroup || atRoot || isAuthCallback) {
         router.replace("/(tabs)");
       }
     }

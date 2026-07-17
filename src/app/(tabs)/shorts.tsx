@@ -16,6 +16,7 @@ import {
   Text,
   useWindowDimensions,
   View,
+  RefreshControl,
 } from "react-native";
 
 export default function ShortsScreen() {
@@ -113,6 +114,13 @@ export default function ShortsScreen() {
             pagingEnabled
             showsVerticalScrollIndicator={false}
             decelerationRate="fast"
+            refreshControl={
+              <RefreshControl
+                refreshing={shorts.isRefreshing}
+                onRefresh={() => loadShorts(authUser?.id, true)}
+                tintColor="#fff"
+              />
+            }
             snapToInterval={itemH}
             snapToAlignment="start"
             getItemLayout={(_, index) => ({
