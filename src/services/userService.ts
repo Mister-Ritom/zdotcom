@@ -152,7 +152,12 @@ export const userService = {
     }
   },
 
+  evictCache(userId: string) {
+    userCache.delete(userId);
+  },
+
   clearCache() {
     userCache.clear();
   },
+
 };

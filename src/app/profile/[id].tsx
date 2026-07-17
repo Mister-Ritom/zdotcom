@@ -63,6 +63,9 @@ export default function ProfileScreen() {
       setIsFollowing(true);
       if (profile) setProfile({ ...profile, followersCount: profile.followersCount + 1 });
     }
+    // Evict both affected profiles from cache so counts are re-fetched from DB
+    userService.evictCache(id);
+    userService.evictCache(currentUser.id);
   };
 
   if (loading) {

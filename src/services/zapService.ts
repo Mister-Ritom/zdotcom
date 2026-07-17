@@ -31,6 +31,32 @@ export const zapService = {
     }
   },
 
+
+  async getExploreFeed(limit = ZAPS_PER_PAGE, offset = 0): Promise<ZapModel[]> {
+    try {
+      // Filter at the DB level: only fetch posts that are shorts OR have at least one media URL.
+      // Postgres stores empty arrays as '{}', so `media_urls.neq.{}` excludes them server-side.
+      // Using .or() ensures the WHERE clause is pushed to Postgres and the LIMIT/RANGE
+      // applies only to matching rows — no client-side filtering, no wasted bandwidth.
+      const { data, error } = await supabase
+        .from(ZAPS_TABLE)
+        .select('*')
+        .eq('is_deleted', false)
+        .is('parent_zap_id', null)
+        .or('is_short.eq.true,media_urls.neq.{}')
+        .order('likes_count', { ascending: false })
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (error) throw error;
+      return (data ?? []).map(zapFromRow);
+    } catch (e) {
+      AppLogger.error('ZapService', 'getExploreFeed failed', e);
+      return [];
+    }
+  },
+
+
   async getFollowingFeed(userId: string, isShort = false, limit = ZAPS_PER_PAGE): Promise<ZapModel[]> {
     try {
       const { data: followsData, error: followsError } = await supabase

@@ -234,6 +234,14 @@ export default function HomeScreen() {
     }
   }, [user?.id]);
 
+  // Re-fetch fresh profile data whenever the drawer opens
+  useEffect(() => {
+    if (drawerOpen && user?.id) {
+      userService.evictCache(user.id);
+      userService.getById(user.id).then(setProfile);
+    }
+  }, [drawerOpen]);
+
   const handleForYouRefresh = useCallback(() => loadForYou(user?.id, true), [user?.id]);
   const handleFollowingRefresh = useCallback(() => {
     if (user?.id) loadFollowing(user.id, true);
