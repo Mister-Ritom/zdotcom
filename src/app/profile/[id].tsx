@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Dimensions } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Dimensions, LayoutChangeEvent } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
@@ -10,14 +10,20 @@ import { zapService } from '@/services/zapService';
 import { type UserModel, type ZapModel } from '@/types/models';
 import { Avatar } from '@/components/common/Avatar';
 import { ZapCardContainer } from '@/components/feed/ZapCardContainer';
+import { ExploreGridItem } from '@/components/feed/ExploreGridItem';
+import { DesktopLayout } from '@/components/DesktopLayout';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 const { width } = Dimensions.get('window');
 const ACCENT = '#208AEF';
 
+const COL_GAP = 3;
+
 export default function ProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const isDark = useColorScheme() === 'dark';
+  const { isDesktopWeb } = useBreakpoint();
   const { user: currentUser } = useAuthStore();
 
   const [profile, setProfile] = useState<UserModel | null>(null);
@@ -25,6 +31,7 @@ export default function ProfileScreen() {
   const [zaps, setZaps] = useState<ZapModel[]>([]);
   const [activeTab, setActiveTab] = useState<'zaps' | 'likes' | 'shorts'>('zaps');
   const [isFollowing, setIsFollowing] = useState(false);
+  const [containerWidth, setContainerWidth] = useState(0);
 
   const isOwnProfile = currentUser?.id === id;
 
@@ -51,6 +58,23 @@ export default function ProfileScreen() {
       zapService.getUserLikedZaps(id).then(setZaps);
     }
   }, [id, activeTab]);
+
+  const onLayout = useCallback((e: LayoutChangeEvent) => {
+    setContainerWidth(e.nativeEvent.layout.width);
+  }, []);
+
+  const numColumns = isDesktopWeb ? 3 : 1;
+  const itemWidth = containerWidth > 0 && numColumns > 1
+    ? (containerWidth - COL_GAP * (numColumns + 1)) / numColumns
+    : containerWidth;
+
+  const renderItem = useCallback(({ item }: { item: ZapModel; index: number }) => {
+    if (isDesktopWeb && numColumns > 1) {
+      if (itemWidth === 0) return null;
+      return <ExploreGridItem item={item} itemWidth={itemWidth} colGap={COL_GAP} />;
+    }
+    return <ZapCardContainer zap={item} />;
+  }, [isDesktopWeb, numColumns, itemWidth]);
 
   const handleFollowToggle = async () => {
     if (!currentUser || !id || isOwnProfile) return;
@@ -85,12 +109,15 @@ export default function ProfileScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: isDark ? '#09090B' : '#FFF' }}>
-      <FlatList
-        data={zaps}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => <ZapCardContainer zap={item} />}
-        ListHeaderComponent={
+    <DesktopLayout>
+      <View style={{ flex: 1, backgroundColor: isDark ? '#09090B' : '#FFF' }} onLayout={onLayout}>
+        <FlatList
+          data={zaps}
+          key={isDesktopWeb ? 'grid-3' : 'list-1'}
+          numColumns={numColumns}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          ListHeaderComponent={
           <View>
             {/* Cover photo */}
             <View style={styles.coverContainer}>
@@ -186,7 +213,8 @@ export default function ProfileScreen() {
           </View>
         }
       />
-    </View>
+      </View>
+    </DesktopLayout>
   );
 }
 

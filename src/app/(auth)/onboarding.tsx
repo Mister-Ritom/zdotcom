@@ -7,6 +7,7 @@
  */
 
 import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useBreakpoint } from "@/hooks/useBreakpoint";
 import { useSettingsStore } from "@/stores/useSettingsStore";
 import { useRouter } from "expo-router";
 import { Compass, Share2, Users } from "lucide-react-native";
@@ -20,6 +21,7 @@ import {
   useWindowDimensions,
   View,
   ViewToken,
+  Image,
 } from "react-native";
 import Animated, {
   useAnimatedStyle,
@@ -115,6 +117,7 @@ export default function OnboardingScreen() {
   const router = useRouter();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === "dark";
+  const { isDesktopWeb } = useBreakpoint();
   const markOnboardingSeen = useSettingsStore((s) => s.markOnboardingSeen);
 
   const [activeIndex, setActiveIndex] = useState(0);
@@ -147,27 +150,126 @@ export default function OnboardingScreen() {
     }
   };
 
+  if (isDesktopWeb) {
+    return (
+      <View style={[styles.desktopContainer, { backgroundColor: isDark ? "#09090B" : "#FAFAFA" }]}>
+        {/* Left side: Interactive dynamic slide showcase */}
+        <View style={[styles.desktopLeft, { backgroundColor: isDark ? "#121215" : "#FFF", borderRightColor: isDark ? "#27272A" : "#E4E4E7" }]}>
+          <View style={styles.desktopSlideContent}>
+            <View style={styles.iconContainer}>
+              {(() => {
+                const Icon = SLIDES[activeIndex].Icon;
+                return <Icon size={72} color="#fff" strokeWidth={1.5} />;
+              })()}
+            </View>
+            <Text style={[styles.slideTitle, isDark && styles.textLight]}>
+              {SLIDES[activeIndex].title}
+            </Text>
+            <Text style={[styles.slideDescription, isDark && styles.textSecondaryLight]}>
+              {SLIDES[activeIndex].description}
+            </Text>
+          </View>
+
+          {/* Slide Selector Pills */}
+          <View style={styles.desktopPillsRow}>
+            {SLIDES.map((slide, idx) => (
+              <TouchableOpacity
+                key={slide.id}
+                style={[
+                  styles.desktopPill,
+                  { backgroundColor: idx === activeIndex ? ACCENT : isDark ? "#1E1E22" : "#E5E7EB" },
+                ]}
+                onPress={() => setActiveIndex(idx)}
+              >
+                <Text style={[styles.desktopPillText, { color: idx === activeIndex ? "#FFF" : isDark ? "#A1A1AA" : "#4B5563" }]}>
+                  {idx + 1}. {slide.title.split(" ")[0]}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
+        {/* Right side: Welcome Card & Actions */}
+        <View style={styles.desktopRight}>
+          <View style={[styles.desktopCard, { backgroundColor: isDark ? "#121215" : "#FFF", borderColor: isDark ? "#27272A" : "#E4E4E7" }]}>
+            <View style={styles.desktopLogoHeader}>
+              <Image
+                source={
+                  isDark
+                    ? require("@/../assets/images/icon_dark.png")
+                    : require("@/../assets/images/icon_black.png")
+                }
+                style={{ width: 44, height: 44 }}
+                resizeMode="contain"
+              />
+              <Text style={[styles.desktopBrandTitle, isDark && styles.textLight]}>Zapcom</Text>
+            </View>
+
+            <Text style={[styles.desktopCardHeadline, isDark && styles.textLight]}>
+              Welcome to the future of social.
+            </Text>
+            <Text style={[styles.desktopCardSub, { color: isDark ? "#A1A1AA" : "#52525B" }]}>
+              Connect with friends, share vibrant moments, and explore real-time conversations across web and mobile.
+            </Text>
+
+            <View style={styles.gap48} />
+
+            {/* Progress dots */}
+            <View style={styles.desktopDotsBox}>
+              <View style={styles.dotsRow}>
+                {SLIDES.map((_, i) => (
+                  <Dot key={i} index={i} activeIndex={activeIndex} />
+                ))}
+              </View>
+            </View>
+
+            <View style={styles.gap48} />
+
+            {/* CTA button */}
+            <TouchableOpacity
+              style={styles.button}
+              onPress={handleNext}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.buttonText}>
+                {activeIndex === SLIDES.length - 1 ? "Get Started" : "Next Step"}
+              </Text>
+            </TouchableOpacity>
+
+            <View style={styles.gap24} />
+
+            <TouchableOpacity
+              onPress={() => {
+                markOnboardingSeen();
+                router.replace("/(auth)/login");
+              }}
+              style={styles.signInRow}
+            >
+              <Text style={[styles.signInLinkText, { color: isDark ? "#A1A1AA" : "#52525B" }]}>
+                Already have an account? <Text style={{ color: ACCENT, fontWeight: "700" }}>Sign In</Text>
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <SafeAreaView style={[styles.container, isDark && styles.containerDark]}>
       {/* Slide pages */}
-      {Platform.OS === "web" ? (
-        <View style={styles.list}>
-          <Slide item={SLIDES[activeIndex]} width={width} />
-        </View>
-      ) : (
-        <FlatList
-          ref={listRef}
-          data={SLIDES}
-          renderItem={({ item }) => <Slide item={item} width={width} />}
-          keyExtractor={(item) => item.id}
-          horizontal
-          pagingEnabled
-          showsHorizontalScrollIndicator={false}
-          onViewableItemsChanged={onViewableItemsChanged}
-          viewabilityConfig={viewabilityConfig}
-          style={styles.list}
-        />
-      )}
+      <FlatList
+        ref={listRef}
+        data={SLIDES}
+        renderItem={({ item }) => <Slide item={item} width={width} />}
+        keyExtractor={(item) => item.id}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
+        style={styles.list}
+      />
 
       {/* Bottom controls */}
       <View style={styles.bottomControls}>
@@ -268,6 +370,9 @@ const styles = StyleSheet.create({
   dotInactive: {
     backgroundColor: "#ccc",
   },
+  gap24: {
+    height: 24,
+  },
   gap48: {
     height: 48,
   },
@@ -288,5 +393,102 @@ const styles = StyleSheet.create({
     fontSize: 17,
     fontWeight: "700",
     letterSpacing: 0.2,
+  },
+  // ── Desktop Layout Styles ──
+  desktopContainer: {
+    flex: 1,
+    flexDirection: "row",
+    width: "100%",
+    minHeight: Platform.OS === "web" ? "100vh" : "100%",
+  },
+  desktopLeft: {
+    flex: 1.1,
+    borderRightWidth: 1,
+    paddingHorizontal: 56,
+    paddingVertical: 48,
+    justifyContent: "space-between",
+  },
+  desktopSlideContent: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 24,
+    maxWidth: 480,
+    alignSelf: "center",
+  },
+  desktopPillsRow: {
+    flexDirection: "row",
+    gap: 12,
+    justifyContent: "center",
+  },
+  desktopPill: {
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 20,
+  },
+  desktopPillText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  desktopRight: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 40,
+  },
+  desktopCard: {
+    width: "100%",
+    maxWidth: 480,
+    borderRadius: 24,
+    borderWidth: 1,
+    padding: 40,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 30,
+  },
+  desktopLogoHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    marginBottom: 32,
+  },
+  desktopLogoCircle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: ACCENT,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  desktopLogoText: {
+    color: "#FFF",
+    fontSize: 24,
+    fontWeight: "800",
+  },
+  desktopBrandTitle: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#000",
+  },
+  desktopCardHeadline: {
+    fontSize: 32,
+    fontWeight: "800",
+    lineHeight: 40,
+    marginBottom: 12,
+    color: "#000",
+  },
+  desktopCardSub: {
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  desktopDotsBox: {
+    alignItems: "center",
+  },
+  signInRow: {
+    alignItems: "center",
+  },
+  signInLinkText: {
+    fontSize: 15,
   },
 });

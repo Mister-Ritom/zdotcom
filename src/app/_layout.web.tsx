@@ -12,13 +12,16 @@ import {
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
-import { Platform, StyleSheet, View } from "react-native";
+import { Platform, StyleSheet, TouchableOpacity, View } from "react-native";
 
 import WebSidebar from "@/components/WebSidebar";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useBreakpoint } from "@/hooks/useBreakpoint";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
+import { GlobalOptionsSheet } from "@/components/GlobalOptionsSheet";
+import { GlobalSendSheet } from "@/components/GlobalSendSheet";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { ArrowLeft } from "lucide-react-native";
 
 // Keep the splash screen visible until auth resolves
 SplashScreen.preventAutoHideAsync();
@@ -53,7 +56,11 @@ function AuthGuard() {
 
     const inAuthGroup = (segments[0] as string) === "(auth)";
 
-    const isPublicRoute = segments[0] === 'privacy' || segments[0] === 'terms';
+    const isPublicRoute =
+      segments[0] === 'privacy' ||
+      segments[0] === 'terms' ||
+      segments[0] === 'shorts' ||
+      segments[0] === 'zap';
 
     if (!user) {
       // Redirect to login if they are not in the auth group and not a public route
@@ -93,6 +100,8 @@ function InitialLayout() {
         <Stack.Screen name="index" />
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="shorts/[id]" />
+        <Stack.Screen name="zap/[id]" />
       </Stack>
     </>
   );
@@ -101,12 +110,42 @@ function InitialLayout() {
 function WebLayoutContainer({ children }: { children: React.ReactNode }) {
   const { isDesktopWeb } = useBreakpoint();
   const segments = useSegments();
+  const router = useRouter();
+  const isDark = useColorScheme() === "dark";
   const inAuthGroup = segments[0] === "(auth)";
-  const showSidebar = isDesktopWeb && !inAuthGroup;
+
+  // Hide the full sidebar on the messages / chat screens so the
+  // split-view layout can use the full remaining width.
+  const isMessagesRoute =
+    segments.includes("messages") || segments.includes("chat");
+
+  const showSidebar = isDesktopWeb && !inAuthGroup && !isMessagesRoute;
+  const showBackArrow = isDesktopWeb && !inAuthGroup && isMessagesRoute;
 
   return (
     <View style={styles.webContainer}>
       {showSidebar && <WebSidebar />}
+
+      {/* Slim back-arrow column shown instead of the sidebar on messages */}
+      {showBackArrow && (
+        <View
+          style={[
+            styles.backColumn,
+            {
+              borderRightColor: isDark ? "#27272A" : "#E4E4E7",
+              backgroundColor: isDark ? "#09090B" : "#FFF",
+            },
+          ]}
+        >
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backBtn}
+          >
+            <ArrowLeft size={22} color={isDark ? "#FFF" : "#18181B"} />
+          </TouchableOpacity>
+        </View>
+      )}
+
       <View style={styles.mainContent}>{children}</View>
     </View>
   );
@@ -135,14 +174,18 @@ export default function RootLayout() {
         value={colorScheme === "dark" ? CustomDarkTheme : CustomLightTheme}
       >
         <BottomSheetModalProvider>
-          <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
-          <View style={styles.root}>
-            <WebLayoutContainer>
-              <InitialLayout />
-            </WebLayoutContainer>
-            {/* Global upload progress banner — floats above all screens */}
-            <UploadStatusBanner />
-          </View>
+          <GlobalOptionsSheet>
+            <GlobalSendSheet>
+              <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+              <View style={styles.root}>
+                <WebLayoutContainer>
+                  <InitialLayout />
+                </WebLayoutContainer>
+                {/* Global upload progress banner — floats above all screens */}
+                <UploadStatusBanner />
+              </View>
+            </GlobalSendSheet>
+          </GlobalOptionsSheet>
         </BottomSheetModalProvider>
       </ThemeProvider>
     </GestureHandlerRootView>
@@ -158,5 +201,15 @@ const styles = StyleSheet.create({
   mainContent: {
     flex: 1,
     height: "100%",
+  },
+  backColumn: {
+    width: 72,
+    borderRightWidth: 1,
+    alignItems: "center",
+    paddingTop: 16,
+  },
+  backBtn: {
+    padding: 10,
+    borderRadius: 50,
   },
 });

@@ -18,6 +18,7 @@ import {
   Mail,
   Monitor,
   Moon,
+  RefreshCw,
   Settings,
   Sun,
   Zap,
@@ -34,6 +35,9 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { ConfirmModal } from "@/components/common/ConfirmModal";
+import { DesktopLayout } from "@/components/DesktopLayout";
+import { RightSidebar } from "@/components/RightSidebar";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -49,10 +53,14 @@ const ACCENT = "#208AEF";
 function HomeTabBar({
   activeTab,
   onSelect,
+  onRefresh,
+  isRefreshing,
   isDark,
 }: {
   activeTab: 0 | 1;
   onSelect: (tab: 0 | 1) => void;
+  onRefresh?: () => void;
+  isRefreshing?: boolean;
   isDark: boolean;
 }) {
   const indicator = useRef(new Animated.Value(0)).current;
@@ -103,6 +111,25 @@ function HomeTabBar({
           { left: indicator, backgroundColor: ACCENT },
         ]}
       />
+      {Platform.OS === "web" && onRefresh && (
+        <TouchableOpacity
+          onPress={onRefresh}
+          disabled={isRefreshing}
+          style={{
+            position: "absolute",
+            right: 12,
+            top: 10,
+            padding: 4,
+          }}
+          // @ts-ignore
+          title="Refresh Feed"
+        >
+          <RefreshCw
+            size={18}
+            color={isRefreshing ? ACCENT : isDark ? "#A1A1AA" : "#71717A"}
+          />
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -217,6 +244,7 @@ export default function HomeScreen() {
   const [activeTab, setActiveTab] = useState<0 | 1>(0);
   const [profile, setProfile] = useState<UserModel | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const insets = useSafeAreaInsets();
   const { isMobile } = useBreakpoint();
 
@@ -312,36 +340,43 @@ export default function HomeScreen() {
         </View>
         )}
 
-        {/* Tab bar */}
-        <HomeTabBar
-          activeTab={activeTab}
-          onSelect={setActiveTab}
-          isDark={isDark}
-        />
+        {/* Desktop Layout Wrapper */}
+        <DesktopLayout 
+          rightPanel={<RightSidebar showStories={activeTab === 0} />}
+        >
+          {/* Tab bar */}
+          <HomeTabBar
+            activeTab={activeTab}
+            onSelect={setActiveTab}
+            onRefresh={activeTab === 0 ? handleFollowingRefresh : handleForYouRefresh}
+            isRefreshing={activeTab === 0 ? following.isRefreshing : forYou.isRefreshing}
+            isDark={isDark}
+          />
 
-        {/* Content — Following */}
-        {activeTab === 0 ? (
-          <ZapFeed
-            zaps={following.zaps}
-            isLoading={following.isLoading}
-            isRefreshing={following.isRefreshing}
-            hasMore={following.hasMore}
-            onRefresh={handleFollowingRefresh}
-            onEndReached={() => {}}
-            header={<StoriesRail />}
-            emptyMessage="Your circle is quiet. Follow people to see their posts here."
-          />
-        ) : (
-          <ZapFeed
-            zaps={forYou.zaps}
-            isLoading={forYou.isLoading}
-            isRefreshing={forYou.isRefreshing}
-            hasMore={forYou.hasMore}
-            onRefresh={handleForYouRefresh}
-            onEndReached={loadMoreForYou}
-            emptyMessage="No posts yet. Be the first to share something amazing!"
-          />
-        )}
+          {/* Content — Following */}
+          {activeTab === 0 ? (
+            <ZapFeed
+              zaps={following.zaps}
+              isLoading={following.isLoading}
+              isRefreshing={following.isRefreshing}
+              hasMore={following.hasMore}
+              onRefresh={handleFollowingRefresh}
+              onEndReached={() => {}}
+              header={isDesktop ? undefined : <StoriesRail />}
+              emptyMessage="Your circle is quiet. Follow people to see their posts here."
+            />
+          ) : (
+            <ZapFeed
+              zaps={forYou.zaps}
+              isLoading={forYou.isLoading}
+              isRefreshing={forYou.isRefreshing}
+              hasMore={forYou.hasMore}
+              onRefresh={handleForYouRefresh}
+              onEndReached={loadMoreForYou}
+              emptyMessage="No posts yet. Be the first to share something amazing!"
+            />
+          )}
+        </DesktopLayout>
       </SafeAreaView>
 
       {/* Drawer Overlay Backdrop — native/mobile only */}
@@ -458,7 +493,7 @@ export default function HomeScreen() {
             label="Logout"
             onPress={() => {
               toggleDrawer(false);
-              signOut();
+              setLogoutModalVisible(true);
             }}
             isDark={isDark}
             danger
@@ -466,6 +501,19 @@ export default function HomeScreen() {
         </View>
       </Animated.View>
       )}
+
+      <ConfirmModal
+        visible={logoutModalVisible}
+        title="Sign Out"
+        message="Are you sure you want to sign out?"
+        confirmText="Sign Out"
+        destructive
+        onCancel={() => setLogoutModalVisible(false)}
+        onConfirm={() => {
+          setLogoutModalVisible(false);
+          signOut();
+        }}
+      />
     </View>
   );
 }

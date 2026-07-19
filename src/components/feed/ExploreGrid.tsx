@@ -1,20 +1,24 @@
 import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, RefreshControl, LayoutChangeEvent } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { zapService } from '@/services/zapService';
 import { type ZapModel } from '@/types/models';
 import { ExploreGridItem } from './ExploreGridItem';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 const PAGE_SIZE = 20;
+const COL_GAP = 3;
 
 export function ExploreGrid() {
   const isDark = useColorScheme() === 'dark';
+  const { isDesktopWeb, isTablet } = useBreakpoint();
   const [items, setItems] = useState<ZapModel[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [containerWidth, setContainerWidth] = useState(0);
   const offsetRef = useRef(0);
 
   const fetchPage = useCallback(async (offset: number): Promise<ZapModel[]> => {
@@ -60,9 +64,19 @@ export function ExploreGrid() {
     setLoadingMore(false);
   }, [loadingMore, hasMore, fetchPage]);
 
-  const renderItem = useCallback(({ item }: { item: ZapModel; index: number }) => {
-    return <ExploreGridItem item={item} />;
+  const onLayout = useCallback((e: LayoutChangeEvent) => {
+    setContainerWidth(e.nativeEvent.layout.width);
   }, []);
+
+  const numColumns = isDesktopWeb ? 4 : isTablet ? 3 : 2;
+  const itemWidth = containerWidth > 0 
+    ? (containerWidth - COL_GAP * (numColumns + 1)) / numColumns 
+    : 0;
+
+  const renderItem = useCallback(({ item }: { item: ZapModel; index: number }) => {
+    if (itemWidth === 0) return null;
+    return <ExploreGridItem item={item} itemWidth={itemWidth} colGap={COL_GAP} />;
+  }, [itemWidth]);
 
   const keyExtractor = useCallback((item: ZapModel) => item.id, []);
 
@@ -94,27 +108,29 @@ export function ExploreGrid() {
   }
 
   return (
-    // FlashList v2: masonry prop replaces the deprecated MasonryFlashList component.
-    // No estimatedItemSize needed — v2 auto-measures all items.
-    // overrideItemLayout only supports `span` in v2, so we omit it entirely here.
-    <FlashList
-      data={items}
-      numColumns={2}
-      masonry
-      renderItem={renderItem}
-      keyExtractor={keyExtractor}
-      onEndReached={handleLoadMore}
-      onEndReachedThreshold={0.5}
-      ListFooterComponent={ListFooter}
-      contentContainerStyle={styles.listContent}
-      refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={handleRefresh}
-          tintColor="#208AEF"
+    <View style={{ flex: 1, width: '100%', height: '100%', minHeight: 400 }} onLayout={onLayout}>
+      {containerWidth > 0 && (
+        <FlashList
+          data={items}
+          numColumns={numColumns}
+          masonry
+          estimatedItemSize={250}
+          renderItem={renderItem}
+          keyExtractor={keyExtractor}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={ListFooter}
+          contentContainerStyle={styles.listContent}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor="#208AEF"
+            />
+          }
         />
-      }
-    />
+      )}
+    </View>
   );
 }
 

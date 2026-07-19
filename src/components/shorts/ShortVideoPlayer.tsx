@@ -67,7 +67,7 @@ export function ShortVideoPlayer({
   const [isMuted, setIsMuted] = useState(globalMutedState);
 
   const [tempVisible, setTempVisible] = useState(false);
-  const hideTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const insets = useSafeAreaInsets();
   const BASE_TAB_BAR_HEIGHT = Platform.OS === "ios" ? 49 : 60;
@@ -86,6 +86,50 @@ export function ShortVideoPlayer({
   const player = useVideoPlayer(videoUrl ?? null, (p) => {
     p.loop = true;
     p.muted = globalMutedState;
+    if (Platform.OS === "web") {
+      const origMount = (p as any).mountVideoView;
+      if (typeof origMount === "function") {
+        (p as any).mountVideoView = (video: any) => {
+          if (video && typeof video.play === "function" && !video._playWrapped) {
+            video._playWrapped = true;
+            video.setAttribute("playsinline", "true");
+            video.playsInline = true;
+            const origVideoPlay = video.play.bind(video);
+            video.play = () => {
+              const prom = origVideoPlay();
+              if (prom && typeof prom.catch === "function") {
+                prom.catch((err: any) => {
+                  console.warn(
+                    `[ShortVideoPlayer] web video.play() promise rejected (${err?.name || "Error"}): ${err?.message}`,
+                    "\nStacktrace:\n",
+                    err?.stack || "No stack trace available",
+                    "\nFull Error Object:",
+                    err
+                  );
+                  // If browser blocked unmuted autoplay, fallback to muted autoplay
+                  if (err?.name === "NotAllowedError" && !video.muted) {
+                    console.info("[ShortVideoPlayer] Autoplay blocked without interaction. Falling back to muted autoplay.");
+                    video.muted = true;
+                    p.muted = true;
+                    globalMutedState = true;
+                    setIsMuted(true);
+                    origVideoPlay().catch((e2: any) => {
+                      console.warn(
+                        `[ShortVideoPlayer] Fallback muted autoplay also rejected: ${e2?.message}`,
+                        "\nStacktrace:\n",
+                        e2?.stack
+                      );
+                    });
+                  }
+                });
+              }
+              return prom;
+            };
+          }
+          return origMount.call(p, video);
+        };
+      }
+    }
   });
 
   const playerRef = useRef(player);
@@ -96,11 +140,25 @@ export function ShortVideoPlayer({
     if (!player) return;
     if (isActive && !manualPaused) {
       try {
-        player.play();
+        const prom = (player as any).play();
+        if (prom && typeof prom.catch === "function") {
+          prom.catch((err: any) => {
+            console.warn(
+              `[ShortVideoPlayer] useEffect player.play() promise rejected (${err?.name || "Error"}): ${err?.message}`,
+              "\nStacktrace:\n",
+              err?.stack || "No stack trace available",
+              "\nFull Error Object:",
+              err
+            );
+          });
+        }
       } catch (e: any) {
         console.warn(
-          "[ShortVideoPlayer] play() threw synchronous error:",
-          e?.message,
+          `[ShortVideoPlayer] useEffect play() threw synchronous error (${e?.name || "Error"}): ${e?.message}`,
+          "\nStacktrace:\n",
+          e?.stack || "No stack trace available",
+          "\nFull Error Object:",
+          e
         );
       }
     } else {
@@ -145,13 +203,29 @@ export function ShortVideoPlayer({
     globalMutedState = next; // Update global state
     showControlsTemporarily();
     // First unmute may be blocked if user hasn't interacted — handle gracefully
-    if (!next && p.status === "paused") {
+    if (!next && !p.playing) {
       try {
-        const promise = p.play();
+        const promise = (p as any).play();
         if (promise && typeof promise.catch === "function") {
-          promise.catch(() => {});
+          promise.catch((err: any) => {
+            console.warn(
+              `[ShortVideoPlayer] toggleMute p.play() promise rejected (${err?.name || "Error"}): ${err?.message}`,
+              "\nStacktrace:\n",
+              err?.stack || "No stack trace available",
+              "\nFull Error Object:",
+              err
+            );
+          });
         }
-      } catch (e) {}
+      } catch (e: any) {
+        console.warn(
+          `[ShortVideoPlayer] toggleMute play() threw synchronous error (${e?.name || "Error"}): ${e?.message}`,
+          "\nStacktrace:\n",
+          e?.stack || "No stack trace available",
+          "\nFull Error Object:",
+          e
+        );
+      }
     }
   }, [showControlsTemporarily]);
 
@@ -171,7 +245,7 @@ export function ShortVideoPlayer({
   return (
     <View
       style={styles.container}
-      onMouseEnter={isWeb ? showControlsTemporarily : undefined}
+      {...({ onMouseEnter: isWeb ? showControlsTemporarily : undefined } as any)}
     >
       {/* Video */}
       <Pressable style={styles.videoPressable} onPress={togglePlayPause}>
@@ -180,6 +254,7 @@ export function ShortVideoPlayer({
           player={player}
           contentFit="contain"
           nativeControls={false}
+          playsInline={true}
         />
         {/* Tap-to-pause icon overlay */}
         {!shouldPlay && (

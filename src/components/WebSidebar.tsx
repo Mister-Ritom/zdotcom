@@ -19,6 +19,7 @@ import {
   LogOut 
 } from 'lucide-react-native';
 import NotificationsPanel from './panels/NotificationsPanel';
+import { ConfirmModal } from './common/ConfirmModal';
 
 const ACCENT = '#208AEF';
 
@@ -39,6 +40,7 @@ export default function WebSidebar() {
   
   const [activePanel, setActivePanel] = useState<'notifications' | 'messages' | null>(null);
   const panelWidth = useRef(new Animated.Value(0)).current;
+  const [logoutModalVisible, setLogoutModalVisible] = useState(false);
 
   useEffect(() => {
     if (user?.id) {
@@ -236,7 +238,7 @@ export default function WebSidebar() {
           <Pressable
             onPress={() => {
               closePanel();
-              signOut();
+              setLogoutModalVisible(true);
             }}
             // @ts-ignore
             title={isTablet ? 'Sign Out' : undefined}
@@ -269,6 +271,19 @@ export default function WebSidebar() {
           )}
         </View>
       </Animated.View>
+
+      <ConfirmModal
+        visible={logoutModalVisible}
+        title="Sign Out"
+        message="Are you sure you want to sign out?"
+        confirmText="Sign Out"
+        destructive
+        onCancel={() => setLogoutModalVisible(false)}
+        onConfirm={() => {
+          setLogoutModalVisible(false);
+          signOut();
+        }}
+      />
     </View>
   );
 }

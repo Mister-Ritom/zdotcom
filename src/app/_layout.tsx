@@ -31,6 +31,7 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { GlobalOptionsSheet } from "@/components/GlobalOptionsSheet";
+import { GlobalSendSheet } from "@/components/GlobalSendSheet";
 
 // Keep the splash screen visible until auth resolves
 SplashScreen.preventAutoHideAsync();
@@ -65,7 +66,11 @@ function AuthGuard() {
 
     const inAuthGroup = (segments[0] as string) === "(auth)";
 
-    const isPublicRoute = segments[0] === 'privacy' || segments[0] === 'terms';
+    const isPublicRoute =
+      segments[0] === 'privacy' ||
+      segments[0] === 'terms' ||
+      segments[0] === 'shorts' ||
+      segments[0] === 'zap';
     const isAuthCallback = segments[0] === 'auth' && segments[1] === 'callback';
 
     if (!user) {
@@ -106,6 +111,8 @@ function InitialLayout() {
         <Stack.Screen name="index" />
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="shorts/[id]" />
+        <Stack.Screen name="zap/[id]" />
       </Stack>
     </>
   );
@@ -135,12 +142,14 @@ export default function RootLayout() {
       <ThemeProvider value={colorScheme === "dark" ? CustomDarkTheme : CustomLightTheme}>
         <BottomSheetModalProvider>
           <GlobalOptionsSheet>
-            <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
-            <View style={styles.root}>
-              <InitialLayout />
-              {/* Global upload progress banner — floats above all screens */}
-              <UploadStatusBanner />
-            </View>
+            <GlobalSendSheet>
+              <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+              <View style={styles.root}>
+                <InitialLayout />
+                {/* Global upload progress banner — floats above all screens */}
+                <UploadStatusBanner />
+              </View>
+            </GlobalSendSheet>
           </GlobalOptionsSheet>
         </BottomSheetModalProvider>
       </ThemeProvider>

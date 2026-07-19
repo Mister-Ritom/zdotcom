@@ -15,6 +15,7 @@ import { useAuthStore } from "@/stores/useAuthStore";
 import { AppLogger } from "@/utils/logger";
 import { useRouter } from "expo-router";
 import { getCleanErrorMessage } from "@/utils/errors";
+import { AuthLayoutContainer } from "@/components/auth/AuthLayoutContainer";
 import { AtSign, Eye, EyeOff, Lock, Mail, User } from "lucide-react-native";
 import { useRef, useState } from "react";
 import {
@@ -28,6 +29,7 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -49,10 +51,14 @@ export default function SignUpScreen() {
 
   const [displayName, setDisplayName] = useState("");
   const [username, setUsername] = useState("");
+  const [usernameError, setUsernameError] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [obscurePassword, setObscurePassword] = useState(true);
   const [localLoading, setLocalLoading] = useState(false);
+  const [referralCode] = useState<string | undefined>(
+    () => storage.getString("referral_code") ?? undefined
+  );
 
   const usernameRef = useRef<TextInput>(null);
   const emailRef = useRef<TextInput>(null);
@@ -60,10 +66,20 @@ export default function SignUpScreen() {
 
   const loading = isLoading || localLoading;
 
+  const handleUsernameChange = (t: string) => {
+    const cleaned = t.toLowerCase();
+    setUsername(cleaned);
+    if (cleaned && !USERNAME_REGEX.test(cleaned)) {
+      setUsernameError("1–15 chars (letters, numbers, underscores only)");
+    } else {
+      setUsernameError(null);
+    }
+  };
+
   const validateForm = (): string | null => {
     if (!displayName.trim()) return "Display name is required";
     if (!username.trim()) return "Username is required";
-    if (!USERNAME_REGEX.test(username.trim()))
+    if (usernameError || !USERNAME_REGEX.test(username.trim()))
       return "Username must be 1–15 characters (letters, numbers, underscores only)";
     if (!email.trim()) return "Email is required";
     if (!email.includes("@")) return "Please enter a valid email";
@@ -95,9 +111,6 @@ export default function SignUpScreen() {
         );
         return;
       }
-
-      // Read referral code from MMKV (set on deep-link)
-      const referralCode = storage.getString("referral_code") ?? undefined;
 
       const { needsVerification } = await signUpWithEmail({
         email: email.trim(),
@@ -141,209 +154,255 @@ export default function SignUpScreen() {
   const c = isDark ? dark : light;
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: c.bg }]}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+    <AuthLayoutContainer>
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: c.bg }]}>
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
         >
-          {/* Logo */}
-          <View style={styles.logoContainer}>
-            <View style={styles.logoCircle}>
-              <Text style={styles.logoLetter}>Z</Text>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Logo */}
+            <View style={styles.logoContainer}>
+              <Image
+                source={
+                  isDark
+                    ? require("@/../assets/images/icon_dark.png")
+                    : require("@/../assets/images/icon_black.png")
+                }
+                style={{ width: 64, height: 64 }}
+                resizeMode="contain"
+              />
             </View>
-          </View>
 
-          <Text style={[styles.title, { color: c.text }]}>
-            Create your account
-          </Text>
-          <Text style={[styles.subtitle, { color: c.textSecondary }]}>
-            Join the community today
-          </Text>
+            <Text style={[styles.title, { color: c.text }]}>Create account</Text>
+            <Text style={[styles.subtitle, { color: c.textSecondary }]}>
+              Join Z and start sharing
+            </Text>
 
-          <View style={styles.gap32} />
+            <View style={styles.gap24} />
 
-          {/* Display Name */}
-          <View
-            style={[
-              styles.inputWrapper,
-              { backgroundColor: c.inputBg, borderColor: c.border },
-            ]}
-          >
-            <User size={18} color={c.icon} strokeWidth={2} />
-            <TextInput
-              style={[styles.input, { color: c.text }]}
-              placeholder="Display Name"
-              placeholderTextColor={c.placeholder}
-              autoCapitalize="words"
-              returnKeyType="next"
-              value={displayName}
-              onChangeText={setDisplayName}
-              onSubmitEditing={() => usernameRef.current?.focus()}
-              editable={!loading}
-            />
-          </View>
-
-          <View style={styles.gap12} />
-
-          {/* Username */}
-          <View
-            style={[
-              styles.inputWrapper,
-              { backgroundColor: c.inputBg, borderColor: c.border },
-            ]}
-          >
-            <AtSign size={18} color={c.icon} strokeWidth={2} />
-            <TextInput
-              ref={usernameRef}
-              style={[styles.input, { color: c.text }]}
-              placeholder="username"
-              placeholderTextColor={c.placeholder}
-              autoCapitalize="none"
-              autoCorrect={false}
-              returnKeyType="next"
-              value={username}
-              onChangeText={(t) => setUsername(t.toLowerCase())}
-              onSubmitEditing={() => emailRef.current?.focus()}
-              editable={!loading}
-            />
-          </View>
-
-          <View style={styles.gap12} />
-
-          {/* Email */}
-          <View
-            style={[
-              styles.inputWrapper,
-              { backgroundColor: c.inputBg, borderColor: c.border },
-            ]}
-          >
-            <Mail size={18} color={c.icon} strokeWidth={2} />
-            <TextInput
-              ref={emailRef}
-              style={[styles.input, { color: c.text }]}
-              placeholder="Email"
-              placeholderTextColor={c.placeholder}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-              returnKeyType="next"
-              value={email}
-              onChangeText={setEmail}
-              onSubmitEditing={() => passwordRef.current?.focus()}
-              editable={!loading}
-            />
-          </View>
-
-          <View style={styles.gap12} />
-
-          {/* Password */}
-          <View
-            style={[
-              styles.inputWrapper,
-              { backgroundColor: c.inputBg, borderColor: c.border },
-            ]}
-          >
-            <Lock size={18} color={c.icon} strokeWidth={2} />
-            <TextInput
-              ref={passwordRef}
-              style={[styles.input, { color: c.text }]}
-              placeholder="Password"
-              placeholderTextColor={c.placeholder}
-              secureTextEntry={obscurePassword}
-              autoComplete="new-password"
-              returnKeyType="done"
-              value={password}
-              onChangeText={setPassword}
-              onSubmitEditing={handleSignUp}
-              editable={!loading}
-            />
-            <TouchableOpacity
-              onPress={() => setObscurePassword((v) => !v)}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            {/* Display Name */}
+            <View
+              style={[
+                styles.inputWrapper,
+                { backgroundColor: c.inputBg, borderColor: c.border },
+              ]}
             >
-              {obscurePassword ? (
-                <Eye size={18} color={c.icon} strokeWidth={2} />
+              <User size={18} color={c.icon} strokeWidth={2} />
+              <TextInput
+                style={[styles.input, { color: c.text }]}
+                placeholder="Display Name (e.g. Alex Chen)"
+                placeholderTextColor={c.placeholder}
+                autoCapitalize="words"
+                returnKeyType="next"
+                value={displayName}
+                onChangeText={setDisplayName}
+                onSubmitEditing={() => usernameRef.current?.focus()}
+                editable={!loading}
+              />
+            </View>
+
+            <View style={styles.gap12} />
+
+            {/* Username */}
+            <View>
+              <View
+                style={[
+                  styles.inputWrapper,
+                  {
+                    backgroundColor: c.inputBg,
+                    borderColor: usernameError ? "#EF4444" : c.border,
+                  },
+                ]}
+              >
+                <AtSign
+                  size={18}
+                  color={usernameError ? "#EF4444" : c.icon}
+                  strokeWidth={2}
+                />
+                <TextInput
+                  ref={usernameRef}
+                  style={[styles.input, { color: c.text }]}
+                  placeholder="username (letters, numbers, _)"
+                  placeholderTextColor={c.placeholder}
+                  autoCapitalize="none"
+                  autoComplete="username"
+                  returnKeyType="next"
+                  value={username}
+                  onChangeText={handleUsernameChange}
+                  onSubmitEditing={() => emailRef.current?.focus()}
+                  editable={!loading}
+                />
+              </View>
+              {usernameError ? (
+                <Text style={styles.errorText}>{usernameError}</Text>
+              ) : null}
+            </View>
+
+            <View style={styles.gap12} />
+
+            {/* Email */}
+            <View
+              style={[
+                styles.inputWrapper,
+                { backgroundColor: c.inputBg, borderColor: c.border },
+              ]}
+            >
+              <Mail size={18} color={c.icon} strokeWidth={2} />
+              <TextInput
+                ref={emailRef}
+                style={[styles.input, { color: c.text }]}
+                placeholder="Email"
+                placeholderTextColor={c.placeholder}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                returnKeyType="next"
+                value={email}
+                onChangeText={setEmail}
+                onSubmitEditing={() => passwordRef.current?.focus()}
+                editable={!loading}
+              />
+            </View>
+
+            <View style={styles.gap12} />
+
+            {/* Password */}
+            <View
+              style={[
+                styles.inputWrapper,
+                { backgroundColor: c.inputBg, borderColor: c.border },
+              ]}
+            >
+              <Lock size={18} color={c.icon} strokeWidth={2} />
+              <TextInput
+                ref={passwordRef}
+                style={[styles.input, { color: c.text }]}
+                placeholder="Password (min 6 characters)"
+                placeholderTextColor={c.placeholder}
+                secureTextEntry={obscurePassword}
+                autoComplete="new-password"
+                returnKeyType="done"
+                value={password}
+                onChangeText={setPassword}
+                onSubmitEditing={handleSignUp}
+                editable={!loading}
+              />
+              <TouchableOpacity
+                onPress={() => setObscurePassword((v) => !v)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                {obscurePassword ? (
+                  <Eye size={18} color={c.icon} strokeWidth={2} />
+                ) : (
+                  <EyeOff size={18} color={c.icon} strokeWidth={2} />
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* Referral code chip */}
+            {!!referralCode && (
+              <View style={[styles.refChip, { backgroundColor: c.inputBg }]}>
+                <Text style={[styles.refText, { color: c.textSecondary }]}>
+                  Referral code applied:{" "}
+                  <Text style={{ color: ACCENT, fontWeight: "700" }}>
+                    {referralCode}
+                  </Text>
+                </Text>
+              </View>
+            )}
+
+            <View style={styles.gap24} />
+
+            {/* Sign Up button */}
+            <TouchableOpacity
+              style={[
+                styles.primaryButton,
+                loading && styles.primaryButtonDisabled,
+              ]}
+              onPress={handleSignUp}
+              disabled={loading}
+              activeOpacity={0.85}
+            >
+              {loading ? (
+                <ActivityIndicator color="#fff" size="small" />
               ) : (
-                <EyeOff size={18} color={c.icon} strokeWidth={2} />
+                <Text style={styles.primaryButtonText}>Create Account</Text>
               )}
             </TouchableOpacity>
-          </View>
 
-          <View style={styles.gap24} />
-
-          {/* Sign Up button */}
-          <TouchableOpacity
-            style={[
-              styles.primaryButton,
-              loading && styles.primaryButtonDisabled,
-            ]}
-            onPress={handleSignUp}
-            disabled={loading}
-            activeOpacity={0.85}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <Text style={styles.primaryButtonText}>Sign Up</Text>
-            )}
-          </TouchableOpacity>
-
-          {/* Legal */}
-          <View style={styles.gap12} />
-          <Text style={[styles.legalText, { color: c.textSecondary }]}>
-            By signing up, you accept the{" "}
-            <Text style={styles.legalLink} onPress={() => router.push('/privacy' as never)}>Privacy Policy</Text> and{" "}
-            <Text style={styles.legalLink} onPress={() => router.push('/terms' as never)}>Terms & Conditions</Text>.
-          </Text>
-
-          <View style={styles.gap16} />
-
-          {/* OR divider */}
-          <View style={styles.dividerRow}>
-            <View style={[styles.dividerLine, { backgroundColor: c.border }]} />
-            <Text style={[styles.dividerText, { color: c.textSecondary }]}>
-              OR
+            {/* Legal text */}
+            <View style={styles.gap12} />
+            <Text style={[styles.legalText, { color: c.textSecondary }]}>
+              By creating an account, you accept the{" "}
+              <Text
+                style={styles.legalLink}
+                onPress={() => router.push("/privacy" as never)}
+              >
+                Privacy Policy
+              </Text>{" "}
+              and{" "}
+              <Text
+                style={styles.legalLink}
+                onPress={() => router.push("/terms" as never)}
+              >
+                Terms & Conditions
+              </Text>
+              .
             </Text>
-            <View style={[styles.dividerLine, { backgroundColor: c.border }]} />
-          </View>
 
-          <View style={styles.gap16} />
+            <View style={styles.gap16} />
 
-          {/* Google */}
-          <TouchableOpacity
-            style={[
-              styles.googleButton,
-              { borderColor: c.border, backgroundColor: c.inputBg },
-            ]}
-            onPress={handleGoogleSignIn}
-            disabled={loading}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.googleG}>G</Text>
-            <Text style={[styles.googleButtonText, { color: c.text }]}>
-              Continue with Google
-            </Text>
-          </TouchableOpacity>
+            {/* OR divider */}
+            <View style={styles.dividerRow}>
+              <View
+                style={[styles.dividerLine, { backgroundColor: c.border }]}
+              />
+              <Text style={[styles.dividerText, { color: c.textSecondary }]}>
+                OR
+              </Text>
+              <View
+                style={[styles.dividerLine, { backgroundColor: c.border }]}
+              />
+            </View>
 
-          <View style={styles.gap24} />
+            <View style={styles.gap16} />
 
-          {/* Sign-in link */}
-          <View style={styles.linkRow}>
-            <Text style={[styles.linkText, { color: c.textSecondary }]}>
-              Already have an account?{" "}
-            </Text>
-            <TouchableOpacity onPress={() => router.replace("/(auth)/login")}>
-              <Text style={styles.linkAction}>Sign In</Text>
+            {/* Google Sign-In */}
+            <TouchableOpacity
+              style={[
+                styles.googleButton,
+                { borderColor: c.border, backgroundColor: c.inputBg },
+              ]}
+              onPress={handleGoogleSignIn}
+              disabled={loading}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.googleG}>G</Text>
+              <Text style={[styles.googleButtonText, { color: c.text }]}>
+                Sign up with Google
+              </Text>
             </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+
+            <View style={styles.gap24} />
+
+            {/* Login link */}
+            <View style={styles.linkRow}>
+              <Text style={[styles.linkText, { color: c.textSecondary }]}>
+                Already have an account?{" "}
+              </Text>
+              <TouchableOpacity onPress={() => router.replace("/(auth)/login")}>
+                <Text style={styles.linkAction}>Sign In</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </AuthLayoutContainer>
   );
 }
 
@@ -455,4 +514,20 @@ const styles = StyleSheet.create({
   },
   linkText: { fontSize: 14 },
   linkAction: { fontSize: 14, fontWeight: "700", color: ACCENT },
+  errorText: {
+    color: "#EF4444",
+    fontSize: 12,
+    marginTop: 6,
+    marginLeft: 4,
+  },
+  refChip: {
+    marginTop: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    borderRadius: 10,
+    alignSelf: "flex-start",
+  },
+  refText: {
+    fontSize: 13,
+  },
 });

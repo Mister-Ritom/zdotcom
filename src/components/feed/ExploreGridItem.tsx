@@ -1,21 +1,9 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { Play, Heart } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { type ZapModel } from '@/types/models';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const COL_GAP = 3;
-const NUM_COLS = 2;
-export const ITEM_WIDTH = (SCREEN_WIDTH - COL_GAP * (NUM_COLS + 1)) / NUM_COLS;
-
-// Fallback height used before the image loads (portrait-ish ratio)
-const FALLBACK_HEIGHT = Math.round(ITEM_WIDTH * 1.25);
-
-// Min/max clamps so no item is absurdly tall or wide
-const MIN_HEIGHT = 120;
-const MAX_HEIGHT = Math.round(ITEM_WIDTH * 2.2);
 
 function formatCount(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -29,23 +17,31 @@ function isVideoUrl(url: string): boolean {
 
 interface Props {
   item: ZapModel;
+  itemWidth: number;
+  colGap: number;
 }
 
-export const ExploreGridItem = React.memo(function ExploreGridItem({ item }: Props) {
+export const ExploreGridItem = React.memo(function ExploreGridItem({ item, itemWidth, colGap }: Props) {
   const thumbnailUrl = item.mediaUrls[0] ?? null;
   const isVideo = thumbnailUrl ? isVideoUrl(thumbnailUrl) : item.isShort;
 
+  // Fallback height used before the image loads (portrait-ish ratio)
+  const fallbackHeight = Math.round(itemWidth * 1.25);
+  // Min/max clamps so no item is absurdly tall or wide
+  const minHeight = 120;
+  const maxHeight = Math.round(itemWidth * 2.2);
+
   // Height starts at fallback; updated to the image's true aspect-ratio height on load
-  const [height, setHeight] = useState(FALLBACK_HEIGHT);
+  const [height, setHeight] = useState(fallbackHeight);
 
   const handleImageLoad = useCallback((e: any) => {
     const w: number = e?.source?.width;
     const h: number = e?.source?.height;
     if (w > 0 && h > 0) {
-      const natural = Math.round((ITEM_WIDTH * h) / w);
-      setHeight(Math.min(Math.max(natural, MIN_HEIGHT), MAX_HEIGHT));
+      const natural = Math.round((itemWidth * h) / w);
+      setHeight(Math.min(Math.max(natural, minHeight), maxHeight));
     }
-  }, []);
+  }, [itemWidth, minHeight, maxHeight]);
 
   const handlePress = useCallback(() => {
     router.push(`/zap/${item.id}`);
@@ -53,7 +49,7 @@ export const ExploreGridItem = React.memo(function ExploreGridItem({ item }: Pro
 
   return (
     <TouchableOpacity
-      style={[styles.container, { height }]}
+      style={[styles.container, { width: itemWidth, height, margin: colGap / 2 }]}
       onPress={handlePress}
       activeOpacity={0.88}
     >
@@ -97,11 +93,9 @@ export const ExploreGridItem = React.memo(function ExploreGridItem({ item }: Pro
 
 const styles = StyleSheet.create({
   container: {
-    width: ITEM_WIDTH,
     backgroundColor: '#18181B',
     overflow: 'hidden',
     borderRadius: 4,
-    margin: COL_GAP / 2,
   },
   textFallback: {
     flex: 1,

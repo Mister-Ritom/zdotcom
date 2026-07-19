@@ -1,9 +1,10 @@
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useState } from 'react';
-import { Platform, Modal, View, Text, TouchableOpacity, StyleSheet, Pressable, FlatList, TextInput } from 'react-native';
+import { Platform, Modal, View, Text, TouchableOpacity, StyleSheet, Pressable, FlatList, TextInput, Dimensions } from 'react-native';
 import BottomSheet, { BottomSheetProps, BottomSheetFlatList, BottomSheetTextInput, BottomSheetView, BottomSheetFooter, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
 import { X } from 'lucide-react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { isWeb } from '@/utils/platform';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 export interface WebModalProps extends BottomSheetProps {
   webTitle?: string;
@@ -33,6 +34,8 @@ const DesktopWebModal = forwardRef<BottomSheet, WebModalProps>(
         if (index >= 0) open();
         else close();
       },
+      present: open,
+      dismiss: close,
       close,
       expand: open,
       collapse: close,
@@ -141,9 +144,16 @@ const NativeModal = forwardRef<BottomSheet, WebModalProps>(
 );
 NativeModal.displayName = 'NativeModal';
 
-// ─── Exported WebModal — delegates at module level, no conditional hooks ───────
+// ─── Exported WebModal — delegates based on breakpoint ─────────────────────────
 
-export const WebModal = isWeb ? DesktopWebModal : NativeModal;
+export const WebModal = forwardRef<BottomSheet, WebModalProps>((props, ref) => {
+  const { isDesktopWeb } = useBreakpoint();
+  if (isDesktopWeb) {
+    return <DesktopWebModal ref={ref} {...props} />;
+  }
+  return <NativeModal ref={ref} {...props} />;
+});
+WebModal.displayName = 'WebModal';
 
 // Polyfills for inner components so we can use them in both Web (regular views) and Native (BottomSheet views)
 export const ModalFlatList = isWeb ? FlatList : BottomSheetFlatList;
@@ -171,8 +181,8 @@ const styles = StyleSheet.create({
   },
   webWindow: {
     width: '100%',
-    minWidth: 480,
-    maxWidth: 720,
+    minWidth: Math.min(400, Dimensions.get('window').width - 32),
+    maxWidth: 600,
     maxHeight: '80%',
     borderRadius: 12,
     borderWidth: 1,

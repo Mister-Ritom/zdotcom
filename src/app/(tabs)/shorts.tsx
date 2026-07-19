@@ -1,10 +1,11 @@
 import { CommentsSheet } from "@/components/sheets/CommentsSheet";
-import { SendSheet } from "@/components/sheets/SendSheet";
 import { ShortVideoContainer } from "@/components/shorts/ShortVideoContainer";
+import { DesktopLayout } from "@/components/DesktopLayout";
 import { useAuthStore } from "@/stores/useAuthStore";
 import { useTabBarVisibility } from "@/contexts/TabBarVisibilityContext";
 import { useFeedStore } from "@/stores/useFeedStore";
 import { useOptionsSheet } from "@/contexts/OptionsSheetContext";
+import { useSendSheet } from "@/contexts/SendSheetContext";
 import BottomSheet from "@gorhom/bottom-sheet";
 import { useNavigation } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -25,6 +26,7 @@ export default function ShortsScreen() {
   const [isFocused, setIsFocused] = useState(false);
   const { setTabBarHidden } = useTabBarVisibility();
   const { showOptions } = useOptionsSheet();
+  const { showSend } = useSendSheet();
 
   const { shorts, loadShorts, loadMoreShorts } = useFeedStore();
   const { user: authUser } = useAuthStore();
@@ -42,9 +44,7 @@ export default function ShortsScreen() {
   const itemH = windowH;
 
   const commentsSheetRef = useRef<BottomSheet>(null);
-  const sendSheetRef = useRef<BottomSheet>(null);
   const [activeZapId, setActiveZapId] = useState<string | null>(null);
-  const [activeZapText, setActiveZapText] = useState<string | undefined>(undefined);
 
   // Single focus/blur listener — plays when tab gains focus, pauses when it loses it
   useEffect(() => {
@@ -105,9 +105,10 @@ export default function ShortsScreen() {
   // On native: each item fills the full screen width.
 
   return (
-    <View style={s.root}>
-      {/* FlatList always renders — itemH is seeded from useWindowDimensions */}
-      <View style={isWeb ? [s.webWrapper, { width: cardW }] : s.nativeWrapper}>
+    <DesktopLayout>
+      <View style={s.root}>
+        {/* FlatList always renders — itemH is seeded from useWindowDimensions */}
+        <View style={isWeb ? [s.webWrapper, { width: cardW }] : s.nativeWrapper}>
           <FlatList
             data={shorts.zaps}
             keyExtractor={(z) => z.id}
@@ -165,24 +166,21 @@ export default function ShortsScreen() {
                     });
                   }}
                   onOpenSend={() => {
-                    setActiveZapId(item.id);
-                    setActiveZapText(item.text);
                     setTabBarHidden(true);
-                    sendSheetRef.current?.snapToIndex(0);
+                    showSend({
+                      zapId: item.id,
+                      zapText: item.text,
+                      onClose: () => setTabBarHidden(false),
+                    });
                   }}
                 />
               </View>
             )}
           />
+        </View>
+        <CommentsSheet ref={commentsSheetRef} postId={activeZapId ?? ""} onClose={() => setTabBarHidden(false)} />
       </View>
-      <CommentsSheet ref={commentsSheetRef} postId={activeZapId ?? ""} onClose={() => setTabBarHidden(false)} />
-      <SendSheet
-        ref={sendSheetRef}
-        zapId={activeZapId}
-        zapText={activeZapText}
-        onClose={() => setTabBarHidden(false)}
-      />
-    </View>
+    </DesktopLayout>
   );
 }
 

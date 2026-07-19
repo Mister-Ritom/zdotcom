@@ -6,7 +6,7 @@ import { zapService } from '@/services/zapService';
 import { ZapCard } from '@/components/feed/ZapCard';
 import { type ZapModel, type UserModel } from '@/types/models';
 import { useOptionsSheet } from '@/contexts/OptionsSheetContext';
-import BottomSheet from '@gorhom/bottom-sheet';
+import { useSendSheet } from '@/contexts/SendSheetContext';
 import { useTabBarVisibility } from '@/contexts/TabBarVisibilityContext';
 import { useFeedStore } from '@/stores/useFeedStore';
 
@@ -21,6 +21,7 @@ export function ZapCardContainer({ zap, isShort = false, onPress }: Props) {
   const { user: authUser } = useAuthStore();
   const [bookmarked, setBookmarked] = useState(false);
   const { showOptions } = useOptionsSheet();
+  const { showSend } = useSendSheet();
   const { setTabBarHidden } = useTabBarVisibility();
   const { deletedIds } = useFeedStore();
 
@@ -81,6 +82,15 @@ export function ZapCardContainer({ zap, isShort = false, onPress }: Props) {
     await zapService.toggleBookmark(authUser.id, zap.id);
   };
 
+  const handleShare = () => {
+    setTabBarHidden(true);
+    showSend({
+      zapId: displayZap.id,
+      zapText: displayZap.text,
+      onClose: () => setTabBarHidden(false),
+    });
+  };
+
   const handlePress = onPress ?? (() => {
     router.push({
       pathname: '/zap/[id]',
@@ -91,32 +101,31 @@ export function ZapCardContainer({ zap, isShort = false, onPress }: Props) {
   if (isDeleted) return null;
 
   return (
-    <>
-      <ZapCard
-        zap={displayZap}
-        user={user}
-        isLiked={liked}
-        isBookmarked={bookmarked}
-        isBoosted={boosted}
-        likesCount={likesCount}
-        rezapsCount={rezapsCount}
-        disableBoost={authUser?.id === displayZap.userId}
-        onPress={handlePress}
-        onLike={handleLike}
-        onBookmark={handleBookmark}
-        onBoost={handleBoost}
-        onOptions={() => {
-          setTabBarHidden(true);
-          showOptions({
-            zapId: displayZap.id,
-            contentType: isShort ? 'short' : 'zap',
-            isOwner: authUser?.id === displayZap.userId,
-            currentText: displayZap.text,
-            currentMediaUrls: displayZap.mediaUrls,
-            onClose: () => setTabBarHidden(false),
-          });
-        }}
-      />
-    </>
+    <ZapCard
+      zap={displayZap}
+      user={user}
+      isLiked={liked}
+      isBookmarked={bookmarked}
+      isBoosted={boosted}
+      likesCount={likesCount}
+      rezapsCount={rezapsCount}
+      disableBoost={authUser?.id === displayZap.userId}
+      onPress={handlePress}
+      onLike={handleLike}
+      onBookmark={handleBookmark}
+      onBoost={handleBoost}
+      onShare={handleShare}
+      onOptions={() => {
+        setTabBarHidden(true);
+        showOptions({
+          zapId: displayZap.id,
+          contentType: isShort ? 'short' : 'zap',
+          isOwner: authUser?.id === displayZap.userId,
+          currentText: displayZap.text,
+          currentMediaUrls: displayZap.mediaUrls,
+          onClose: () => setTabBarHidden(false),
+        });
+      }}
+    />
   );
 }

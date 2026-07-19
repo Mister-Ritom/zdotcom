@@ -10,7 +10,7 @@
  */
 
 import { useState, useRef } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
@@ -18,6 +18,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { AppLogger } from '@/utils/logger';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getCleanErrorMessage } from '@/utils/errors';
+import { AuthLayoutContainer } from '@/components/auth/AuthLayoutContainer';
 
 const ACCENT = '#208AEF';
 
@@ -87,147 +88,155 @@ export default function LoginScreen() {
   const c = isDark ? dark : light;
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: c.bg }]}>
-      <KeyboardAvoidingView
-        style={styles.flex}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+    <AuthLayoutContainer>
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: c.bg }]}>
+        <KeyboardAvoidingView
+          style={styles.flex}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          {/* Logo */}
-          <View style={styles.logoContainer}>
-            <View style={styles.logoCircle}>
-              <Text style={styles.logoLetter}>Z</Text>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {/* Logo */}
+            <View style={styles.logoContainer}>
+              <Image
+                source={
+                  isDark
+                    ? require("@/../assets/images/icon_dark.png")
+                    : require("@/../assets/images/icon_black.png")
+                }
+                style={{ width: 64, height: 64 }}
+                resizeMode="contain"
+              />
             </View>
-          </View>
 
-          {/* Title */}
-          <Text style={[styles.title, { color: c.text }]}>Welcome back</Text>
-          <Text style={[styles.subtitle, { color: c.textSecondary }]}>
-            Sign in to continue
-          </Text>
+            {/* Title */}
+            <Text style={[styles.title, { color: c.text }]}>Welcome back</Text>
+            <Text style={[styles.subtitle, { color: c.textSecondary }]}>
+              Sign in to continue
+            </Text>
 
-          <View style={styles.gap32} />
+            <View style={styles.gap32} />
 
-          {/* Email field */}
-          <View style={[styles.inputWrapper, { backgroundColor: c.inputBg, borderColor: c.border }]}>
-            <Mail size={18} color={c.icon} strokeWidth={2} />
-            <TextInput
-              style={[styles.input, { color: c.text }]}
-              placeholder="Email"
-              placeholderTextColor={c.placeholder}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoComplete="email"
-              returnKeyType="next"
-              value={email}
-              onChangeText={setEmail}
-              onSubmitEditing={() => passwordRef.current?.focus()}
-              editable={!loading}
-            />
-          </View>
+            {/* Email field */}
+            <View style={[styles.inputWrapper, { backgroundColor: c.inputBg, borderColor: c.border }]}>
+              <Mail size={18} color={c.icon} strokeWidth={2} />
+              <TextInput
+                style={[styles.input, { color: c.text }]}
+                placeholder="Email"
+                placeholderTextColor={c.placeholder}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                returnKeyType="next"
+                value={email}
+                onChangeText={setEmail}
+                onSubmitEditing={() => passwordRef.current?.focus()}
+                editable={!loading}
+              />
+            </View>
 
-          <View style={styles.gap12} />
+            <View style={styles.gap12} />
 
-          {/* Password field */}
-          <View style={[styles.inputWrapper, { backgroundColor: c.inputBg, borderColor: c.border }]}>
-            <Lock size={18} color={c.icon} strokeWidth={2} />
-            <TextInput
-              ref={passwordRef}
-              style={[styles.input, { color: c.text }]}
-              placeholder="Password"
-              placeholderTextColor={c.placeholder}
-              secureTextEntry={obscurePassword}
-              autoComplete="password"
-              returnKeyType="done"
-              value={password}
-              onChangeText={setPassword}
-              onSubmitEditing={handleEmailSignIn}
-              editable={!loading}
-            />
+            {/* Password field */}
+            <View style={[styles.inputWrapper, { backgroundColor: c.inputBg, borderColor: c.border }]}>
+              <Lock size={18} color={c.icon} strokeWidth={2} />
+              <TextInput
+                ref={passwordRef}
+                style={[styles.input, { color: c.text }]}
+                placeholder="Password"
+                placeholderTextColor={c.placeholder}
+                secureTextEntry={obscurePassword}
+                autoComplete="password"
+                returnKeyType="done"
+                value={password}
+                onChangeText={setPassword}
+                onSubmitEditing={handleEmailSignIn}
+                editable={!loading}
+              />
+              <TouchableOpacity
+                onPress={() => setObscurePassword((v) => !v)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                {obscurePassword ? (
+                  <Eye size={18} color={c.icon} strokeWidth={2} />
+                ) : (
+                  <EyeOff size={18} color={c.icon} strokeWidth={2} />
+                )}
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.gap24} />
+
+            {/* Sign In button */}
             <TouchableOpacity
-              onPress={() => setObscurePassword((v) => !v)}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              style={[styles.primaryButton, loading && styles.primaryButtonDisabled]}
+              onPress={handleEmailSignIn}
+              disabled={loading}
+              activeOpacity={0.85}
             >
-              {obscurePassword ? (
-                <Eye size={18} color={c.icon} strokeWidth={2} />
+              {loading ? (
+                <ActivityIndicator color="#fff" size="small" />
               ) : (
-                <EyeOff size={18} color={c.icon} strokeWidth={2} />
+                <Text style={styles.primaryButtonText}>Sign In</Text>
               )}
             </TouchableOpacity>
-          </View>
 
-          <View style={styles.gap24} />
-
-          {/* Sign In button */}
-          <TouchableOpacity
-            style={[styles.primaryButton, loading && styles.primaryButtonDisabled]}
-            onPress={handleEmailSignIn}
-            disabled={loading}
-            activeOpacity={0.85}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" size="small" />
-            ) : (
-              <Text style={styles.primaryButtonText}>Sign In</Text>
-            )}
-          </TouchableOpacity>
-
-          {/* Legal text */}
-          <View style={styles.gap12} />
-          <Text style={[styles.legalText, { color: c.textSecondary }]}>
-            By signing in, you accept the{' '}
-            <Text style={styles.legalLink} onPress={() => router.push('/privacy' as never)}>
-              Privacy Policy
+            {/* Legal text */}
+            <View style={styles.gap12} />
+            <Text style={[styles.legalText, { color: c.textSecondary }]}>
+              By signing in, you accept the{' '}
+              <Text style={styles.legalLink} onPress={() => router.push('/privacy' as never)}>
+                Privacy Policy
+              </Text>
+              {' '}and{' '}
+              <Text style={styles.legalLink} onPress={() => router.push('/terms' as never)}>
+                Terms & Conditions
+              </Text>
+              .
             </Text>
-            {' '}and{' '}
-            <Text style={styles.legalLink} onPress={() => router.push('/terms' as never)}>
-              Terms & Conditions
-            </Text>
-            .
-          </Text>
 
-          <View style={styles.gap16} />
+            <View style={styles.gap16} />
 
-          {/* OR divider */}
-          <View style={styles.dividerRow}>
-            <View style={[styles.dividerLine, { backgroundColor: c.border }]} />
-            <Text style={[styles.dividerText, { color: c.textSecondary }]}>OR</Text>
-            <View style={[styles.dividerLine, { backgroundColor: c.border }]} />
-          </View>
+            {/* OR divider */}
+            <View style={styles.dividerRow}>
+              <View style={[styles.dividerLine, { backgroundColor: c.border }]} />
+              <Text style={[styles.dividerText, { color: c.textSecondary }]}>OR</Text>
+              <View style={[styles.dividerLine, { backgroundColor: c.border }]} />
+            </View>
 
-          <View style={styles.gap16} />
+            <View style={styles.gap16} />
 
-          {/* Google Sign-In */}
-          <TouchableOpacity
-            style={[styles.googleButton, { borderColor: c.border, backgroundColor: c.inputBg }]}
-            onPress={handleGoogleSignIn}
-            disabled={loading}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.googleG}>G</Text>
-            <Text style={[styles.googleButtonText, { color: c.text }]}>
-              Continue with Google
-            </Text>
-          </TouchableOpacity>
-
-          <View style={styles.gap24} />
-
-          {/* Sign-up link */}
-          <View style={styles.linkRow}>
-            <Text style={[styles.linkText, { color: c.textSecondary }]}>
-              {"Don't have an account? "}
-            </Text>
-            <TouchableOpacity onPress={() => router.push('/(auth)/signup')}>
-              <Text style={styles.linkAction}>Sign Up</Text>
+            {/* Google Sign-In */}
+            <TouchableOpacity
+              style={[styles.googleButton, { borderColor: c.border, backgroundColor: c.inputBg }]}
+              onPress={handleGoogleSignIn}
+              disabled={loading}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.googleG}>G</Text>
+              <Text style={[styles.googleButtonText, { color: c.text }]}>
+                Continue with Google
+              </Text>
             </TouchableOpacity>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+
+            <View style={styles.gap24} />
+
+            {/* Sign-up link */}
+            <View style={styles.linkRow}>
+              <Text style={[styles.linkText, { color: c.textSecondary }]}>
+                {"Don't have an account? "}
+              </Text>
+              <TouchableOpacity onPress={() => router.push('/(auth)/signup')}>
+                <Text style={styles.linkAction}>Sign Up</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </AuthLayoutContainer>
   );
 }
 

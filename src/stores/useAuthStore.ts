@@ -18,6 +18,7 @@ import { type Session, type User } from "@supabase/supabase-js";
 import * as AuthSession from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
+import { Platform } from "react-native";
 import { create } from "zustand";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -186,21 +187,28 @@ export const useAuthStore = create<AuthState & AuthActions>()((set, get) => ({
   signInWithGoogle: async () => {
     set({ isLoading: true });
     try {
-      const redirectUrl = AuthSession.makeRedirectUri({
+      const isWeb = Platform.OS === 'web';
+      let redirectUrl = AuthSession.makeRedirectUri({
         path: "/auth/callback",
       });
+
+      if (isWeb && typeof window !== 'undefined' && window.location) {
+        redirectUrl = `${window.location.origin}/auth/callback`;
+      }
 
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
           redirectTo: redirectUrl,
-          skipBrowserRedirect: true,
+          skipBrowserRedirect: !isWeb, // Don't skip browser redirect on Web!
         },
       });
 
       if (error) throw error;
 
-      if (data.url) {
+      // On Web, Supabase will have already redirected the user.
+      // On Native, we use WebBrowser to open the auth session.
+      if (!isWeb && data.url) {
         const result = await WebBrowser.openAuthSessionAsync(
           data.url,
           redirectUrl

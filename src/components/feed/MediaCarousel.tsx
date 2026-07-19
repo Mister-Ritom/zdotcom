@@ -2,9 +2,11 @@ import { Image } from "expo-image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   PixelRatio,
+  Platform,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 import Animated, {
@@ -19,21 +21,24 @@ const isVideo = (url: string) => url.toLowerCase().includes(".mp4");
 const MIN_HEIGHT = 120;
 const DEFAULT_RATIO = 4 / 3;
 
-function clampHeight(ratio: number, width: number, maxHeight: number) {
-  return Math.min(Math.max(width / ratio, MIN_HEIGHT), maxHeight);
-}
-
 interface Props {
   mediaUrls: string[];
   maxHeight?: number;
   borderRadius?: number;
+  onWidthCalculated?: (width: number) => void;
 }
 
 export function MediaCarousel({
   mediaUrls,
   maxHeight = 700,
   borderRadius = 12,
+  onWidthCalculated,
 }: Props) {
+  const { height: windowHeight, width: windowWidth } = useWindowDimensions();
+  const isDesktopWeb = Platform.OS === 'web' && windowWidth >= 768;
+  const capHeight = isDesktopWeb
+    ? Math.min(maxHeight, windowHeight * 0.65)
+    : maxHeight;
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [aspectRatios, setAspectRatios] = useState<Record<number, number>>({});
@@ -42,14 +47,25 @@ export function MediaCarousel({
   const [viewerIndex, setViewerIndex] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
 
-  const heightAnim = useSharedValue(clampHeight(DEFAULT_RATIO, 300, maxHeight));
+  const currentRatio = aspectRatios[currentIndex] ?? DEFAULT_RATIO;
+  const rawHeight = scrollWidth > 0 ? scrollWidth / currentRatio : 300;
+  const targetHeight = Math.min(Math.max(rawHeight, MIN_HEIGHT), capHeight);
+  const itemWidth = scrollWidth > 0 ? Math.min(scrollWidth, targetHeight * currentRatio) : scrollWidth;
+
+  const heightAnim = useSharedValue(targetHeight);
 
   useEffect(() => {
     if (scrollWidth === 0) return;
-    const ratio = aspectRatios[currentIndex] ?? DEFAULT_RATIO;
-    const target = clampHeight(ratio, scrollWidth, maxHeight);
-    heightAnim.value = withSpring(target, { damping: 20, stiffness: 200, mass: 0.8 });
-  }, [currentIndex, aspectRatios, scrollWidth, maxHeight]);
+    heightAnim.value = withSpring(targetHeight, { damping: 20, stiffness: 200, mass: 0.8 });
+  }, [targetHeight, scrollWidth]);
+
+  // Decoupled from scrollWidth so outer card width resizing never triggers a loop or flicker
+  useEffect(() => {
+    if (aspectRatios[currentIndex]) {
+      const natW = Math.min(612, capHeight * (aspectRatios[currentIndex] ?? DEFAULT_RATIO));
+      onWidthCalculated?.(natW);
+    }
+  }, [aspectRatios, currentIndex, capHeight, onWidthCalculated]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     height: heightAnim.value,
@@ -63,6 +79,20 @@ export function MediaCarousel({
       setCurrentIndex(index);
     },
     [scrollWidth],
+  );
+
+  const handleScroll = useCallback(
+    (e: any) => {
+      if (scrollWidth === 0) return;
+      const x = e.nativeEvent.contentOffset.x;
+      const index = Math.round(x / scrollWidth);
+      if (index !== currentIndex && index >= 0 && index < mediaUrls.length) {
+        if (Math.abs(x - index * scrollWidth) <= 15) {
+          setCurrentIndex(index);
+        }
+      }
+    },
+    [scrollWidth, currentIndex, mediaUrls.length],
   );
 
   const handleImageLoad = useCallback((index: number, e: any) => {
@@ -82,6 +112,7 @@ export function MediaCarousel({
 
   const goToPage = useCallback(
     (index: number) => {
+      setCurrentIndex(index);
       scrollRef.current?.scrollTo({ x: index * scrollWidth, animated: true });
     },
     [scrollWidth],
@@ -97,9 +128,9 @@ export function MediaCarousel({
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
+          onScroll={handleScroll}
           onMomentumScrollEnd={handleScrollEnd}
           onScrollEndDrag={(e) => {
-            // Only handle drag end if there is no momentum to follow
             if (e.nativeEvent.velocity?.x === 0) {
               handleScrollEnd(e);
             }
@@ -110,31 +141,53 @@ export function MediaCarousel({
             const w = PixelRatio.roundToNearestPixel(e.nativeEvent.layout.width);
             if (Math.abs(scrollWidth - w) > 1) {
               setScrollWidth(w);
+              if (scrollRef.current && currentIndex > 0) {
+                scrollRef.current.scrollTo({ x: currentIndex * w, animated: false });
+              }
             }
           }}
         >
-          {scrollWidth > 0 && mediaUrls.map((url, index) => (
-            <TouchableOpacity
-              key={`${url}-${index}`}
-              activeOpacity={0.9}
-              onPress={() => openViewer(index)}
-              style={{ width: scrollWidth, height: "100%" }}
-            >
-              {isVideo(url) ? (
-                <ZapVideoPlayer 
-                  uri={url} 
-                  onAspectRatioCalculated={(ratio) => setAspectRatios((prev) => ({ ...prev, [index]: ratio }))}
-                />
-              ) : (
-                <Image
-                  source={{ uri: url }}
-                  style={styles.image}
-                  contentFit="cover"
-                  onLoad={(e) => handleImageLoad(index, e)}
-                />
-              )}
-            </TouchableOpacity>
-          ))}
+          {scrollWidth > 0 && mediaUrls.map((url, index) => {
+            const itemRatio = aspectRatios[index] ?? DEFAULT_RATIO;
+            const currentItemWidth = Math.min(scrollWidth, targetHeight * itemRatio);
+
+            return (
+              <TouchableOpacity
+                key={`${url}-${index}`}
+                activeOpacity={0.9}
+                onPress={() => openViewer(index)}
+                style={{
+                  width: scrollWidth,
+                  height: "100%",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <View
+                  style={{
+                    width: currentItemWidth,
+                    height: "100%",
+                    overflow: "hidden",
+                    borderRadius: 8,
+                  }}
+                >
+                  {isVideo(url) ? (
+                    <ZapVideoPlayer 
+                      uri={url} 
+                      onAspectRatioCalculated={(ratio) => setAspectRatios((prev) => ({ ...prev, [index]: ratio }))}
+                    />
+                  ) : (
+                    <Image
+                      source={{ uri: url }}
+                      style={styles.image}
+                      contentFit="cover"
+                      onLoad={(e) => handleImageLoad(index, e)}
+                    />
+                  )}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
       </Animated.View>
 
@@ -172,7 +225,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 14,
     marginBottom: 4,
     overflow: "hidden",
-    backgroundColor: "#000",
+    backgroundColor: "transparent",
   },
   animatedContainer: {
     overflow: "hidden",

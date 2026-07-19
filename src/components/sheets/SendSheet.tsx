@@ -10,6 +10,8 @@ import {
   ActivityIndicator,
   Alert,
   Clipboard,
+  Image,
+  Linking,
   Platform,
   Share,
   StyleSheet,
@@ -24,18 +26,45 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { messageService } from '@/services/messageService';
 import { userService } from '@/services/userService';
-import { type ConversationModel, type UserModel } from '@/types/models';
+import { zapService } from '@/services/zapService';
+import { type ConversationModel, type UserModel, type ZapModel } from '@/types/models';
 import { isWeb } from '@/utils/platform';
+import { APP_BASE_URL, getZapShareUrl } from '@/constants/APP_URL';
 import BottomSheet from '@gorhom/bottom-sheet';
 import {
   Check,
   CirclePlus,
   Copy,
   ExternalLink,
+  Play,
   Send,
 } from 'lucide-react-native';
 
 const ACCENT = '#208AEF';
+
+// ─── Magic prefix used to detect zap-share messages in chat ─────────────────
+export const ZAP_SHARE_PREFIX = '__ZAP_SHARE__:';
+
+export interface ZapSharePayload {
+  zapId: string;
+  url: string;
+  caption: string;
+  thumbnailUrl?: string;
+  creatorUsername?: string;
+  creatorName?: string;
+  creatorAvatarUrl?: string;
+  isShort?: boolean;
+}
+
+/** Encode a zap share payload into a chat message string. */
+export function encodeZapShare(payload: ZapSharePayload, personalMessage: string): string {
+  const json = JSON.stringify(payload);
+  return personalMessage.trim()
+    ? `${ZAP_SHARE_PREFIX}${json}\n${personalMessage.trim()}`
+    : `${ZAP_SHARE_PREFIX}${json}`;
+}
+
+// ─── Types ───────────────────────────────────────────────────────────────────
 
 export interface SendSheetProps {
   zapId?: string | null;
@@ -48,12 +77,139 @@ interface RecipientRow {
   otherUser?: UserModel;
 }
 
+// ─── Zap Preview Card (top of sheet) ─────────────────────────────────────────
+
+function ZapPreviewCard({
+  zap,
+  creator,
+  isDark,
+}: {
+  zap: ZapModel | null;
+  creator: UserModel | null;
+  isDark: boolean;
+}) {
+  if (!zap) return null;
+  const thumbnailUrl = zap.mediaUrls?.[0];
+  const cardBg = isDark ? '#18181B' : '#F4F4F5';
+  const textColor = isDark ? '#FFF' : '#000';
+  const subColor = isDark ? '#A1A1AA' : '#71717A';
+
+  return (
+    <View style={[previewStyles.card, { backgroundColor: cardBg }]}>
+      {/* Thumbnail */}
+      <View style={previewStyles.thumbWrap}>
+        {thumbnailUrl ? (
+          <Image source={{ uri: thumbnailUrl }} style={previewStyles.thumb} resizeMode="cover" />
+        ) : (
+          <View style={[previewStyles.thumb, previewStyles.thumbPlaceholder]}>
+            <Play size={24} color="#fff" fill="#fff" />
+          </View>
+        )}
+        {/* Play icon overlay */}
+        <View style={previewStyles.playOverlay}>
+          <Play size={18} color="#fff" fill="#fff" />
+        </View>
+      </View>
+
+      {/* Meta */}
+      <View style={previewStyles.meta}>
+        {creator && (
+          <View style={previewStyles.creatorRow}>
+            <Avatar
+              uri={creator.profilePictureUrl}
+              name={creator.displayName}
+              size={20}
+            />
+            <Text style={[previewStyles.creatorName, { color: textColor }]} numberOfLines={1}>
+              @{creator.username}
+            </Text>
+            {creator.isVerified && (
+              <View style={previewStyles.badge}>
+                <Text style={previewStyles.badgeText}>✓</Text>
+              </View>
+            )}
+          </View>
+        )}
+        {zap.text.trim().length > 0 && (
+          <Text style={[previewStyles.caption, { color: subColor }]} numberOfLines={2}>
+            {zap.text}
+          </Text>
+        )}
+        <Text style={previewStyles.url} numberOfLines={1}>
+          {APP_BASE_URL}/shorts/{zap.id}
+        </Text>
+      </View>
+    </View>
+  );
+}
+
+const previewStyles = StyleSheet.create({
+  card: {
+    flexDirection: 'row',
+    borderRadius: 14,
+    overflow: 'hidden',
+    marginBottom: 12,
+    gap: 0,
+  },
+  thumbWrap: {
+    width: 76,
+    height: 100,
+    position: 'relative',
+  },
+  thumb: {
+    width: 76,
+    height: 100,
+    backgroundColor: '#1C1C1E',
+  },
+  thumbPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playOverlay: {
+    position: 'absolute',
+    bottom: 6,
+    right: 6,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 10,
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  meta: {
+    flex: 1,
+    padding: 10,
+    gap: 4,
+    justifyContent: 'center',
+  },
+  creatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginBottom: 2,
+  },
+  creatorName: { fontSize: 13, fontWeight: '700', flex: 1 },
+  badge: {
+    backgroundColor: ACCENT,
+    borderRadius: 8,
+    width: 14,
+    height: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: { color: '#fff', fontSize: 8, fontWeight: '900' },
+  caption: { fontSize: 12, lineHeight: 16 },
+  url: { fontSize: 11, color: ACCENT, marginTop: 2 },
+});
+
+// ─── Main SendSheet ───────────────────────────────────────────────────────────
+
 export const SendSheet = forwardRef<BottomSheet, SendSheetProps>(
   ({ zapId, zapText, onClose }, ref) => {
     const isDark = useColorScheme() === 'dark';
     const { user: authUser } = useAuthStore();
 
-    const snapPoints = useMemo(() => ['60%', '90%'], []);
+    const snapPoints = useMemo(() => ['70%', '92%'], []);
 
     const [rows, setRows] = useState<RecipientRow[]>([]);
     const [loading, setLoading] = useState(false);
@@ -64,9 +220,30 @@ export const SendSheet = forwardRef<BottomSheet, SendSheetProps>(
     const [messageText, setMessageText] = useState('');
     const loadedRef = useRef(false);
 
-    const zapLink = `z://short/${zapId}`;
+    // Zap + creator data for the preview card
+    const [zapData, setZapData] = useState<ZapModel | null>(null);
+    const [creator, setCreator] = useState<UserModel | null>(null);
+    const zapLoadedRef = useRef<string | null>(null);
 
-    // ── Load conversations once per open ────────────────────────────
+    const isShortItem = zapData?.isShort ?? false;
+    const zapLink = zapId
+      ? (isShortItem ? getZapShareUrl(zapId) : `${APP_BASE_URL}/zap/${zapId}`)
+      : '';
+
+    // ── Load zap data for preview ────────────────────────────────────────────
+    useEffect(() => {
+      if (!zapId || zapLoadedRef.current === zapId) return;
+      zapLoadedRef.current = zapId;
+      zapService.getZapById(zapId).then(async (z) => {
+        setZapData(z);
+        if (z?.userId) {
+          const u = await userService.getById(z.userId);
+          setCreator(u);
+        }
+      });
+    }, [zapId]);
+
+    // ── Load conversations once per open ─────────────────────────────────────
     const load = useCallback(async () => {
       if (!authUser?.id || loadedRef.current) return;
       loadedRef.current = true;
@@ -86,10 +263,15 @@ export const SendSheet = forwardRef<BottomSheet, SendSheetProps>(
       }
     }, [authUser?.id]);
 
+    // On web, DesktopWebModal never fires onAnimate, so we eagerly load
+    // conversations whenever zapId becomes set (i.e. the sheet is opened).
+    useEffect(() => {
+      if (zapId) load();
+    }, [zapId, load]);
+
     const handleAnimate = useCallback(
       (fromIndex: number, toIndex: number) => {
         if (toIndex === -1) {
-          // reset on close
           loadedRef.current = false;
           setQuery('');
           setMessageText('');
@@ -113,7 +295,27 @@ export const SendSheet = forwardRef<BottomSheet, SendSheetProps>(
       if (ref && 'current' in ref && ref.current) ref.current.close();
     }, [ref]);
 
-    // ── Send zap to a conversation ───────────────────────────────────
+    const handleWebClose = useCallback(() => {
+      loadedRef.current = false;
+      setQuery('');
+      setMessageText('');
+      setSent({});
+      onClose?.();
+    }, [onClose]);
+
+    // ── Build share payload ──────────────────────────────────────────────────
+    const buildPayload = useCallback((): ZapSharePayload => ({
+      zapId: zapId ?? '',
+      url: zapLink,
+      caption: zapData?.text ?? zapText ?? '',
+      thumbnailUrl: zapData?.mediaUrls?.[0],
+      creatorUsername: creator?.username,
+      creatorName: creator?.displayName,
+      creatorAvatarUrl: creator?.profilePictureUrl,
+      isShort: isShortItem,
+    }), [zapId, zapLink, zapData, zapText, creator, isShortItem]);
+
+    // ── Send zap to a conversation ───────────────────────────────────────────
     const handleSend = useCallback(
       async (row: RecipientRow) => {
         if (!authUser?.id || !zapId) return;
@@ -121,9 +323,7 @@ export const SendSheet = forwardRef<BottomSheet, SendSheetProps>(
         setSending((p) => ({ ...p, [convId]: true }));
         try {
           const allIds = row.conversation.recipients;
-          const msg = messageText.trim()
-            ? `${messageText.trim()}\n\n${zapLink}`
-            : zapLink;
+          const msg = encodeZapShare(buildPayload(), messageText);
           await messageService.sendMessage({
             senderId: authUser.id,
             recipients: allIds,
@@ -134,12 +334,11 @@ export const SendSheet = forwardRef<BottomSheet, SendSheetProps>(
           setSending((p) => ({ ...p, [convId]: false }));
         }
       },
-      [authUser?.id, zapId, zapLink, messageText]
+      [authUser?.id, zapId, buildPayload, messageText]
     );
 
-    // ── Status / Copy / Share actions ────────────────────────────────
+    // ── Extra actions ────────────────────────────────────────────────────────
     const handleAddToStatus = useCallback(() => {
-      // TODO: navigate to status creation with zapId pre-filled
       Alert.alert('Coming soon', 'Adding to status will be available soon.');
       close();
     }, [close]);
@@ -156,18 +355,20 @@ export const SendSheet = forwardRef<BottomSheet, SendSheetProps>(
     }, [zapLink, close]);
 
     const handleShareExternal = useCallback(async () => {
+      const shareText = zapData?.text ?? zapText;
+      const defaultMsg = isShortItem
+        ? `Watch this short on Z ⚡\n${zapLink}`
+        : `Check out this zap on Z ⚡\n${zapLink}`;
       try {
         await Share.share({
-          message: zapText
-            ? `${zapText}\n\n${zapLink}`
-            : `Watch this on Z: ${zapLink}`,
+          message: shareText ? `${shareText}\n\n${zapLink}` : defaultMsg,
           url: zapLink,
         });
       } catch {}
       close();
-    }, [zapText, zapLink, close]);
+    }, [zapData?.text, zapText, zapLink, close, isShortItem]);
 
-    // ── Filtered rows ─────────────────────────────────────────────────
+    // ── Filtered rows ────────────────────────────────────────────────────────
     const filtered = useMemo(() => {
       if (!query.trim()) return rows;
       const q = query.toLowerCase();
@@ -178,7 +379,7 @@ export const SendSheet = forwardRef<BottomSheet, SendSheetProps>(
       );
     }, [rows, query]);
 
-    // ── Colours ───────────────────────────────────────────────────────
+    // ── Colours ──────────────────────────────────────────────────────────────
     const bg = isDark ? '#18181B' : '#FFFFFF';
     const textColor = isDark ? '#F4F4F5' : '#18181B';
     const subColor = isDark ? '#A1A1AA' : '#71717A';
@@ -196,14 +397,17 @@ export const SendSheet = forwardRef<BottomSheet, SendSheetProps>(
         handleIndicatorStyle={{ backgroundColor: isDark ? '#52525B' : '#A1A1AA' }}
         enablePanDownToClose
         enableDynamicSizing={false}
-        webTitle="Send"
-        onWebClose={onClose}
+        webTitle="Send Short"
+        onWebClose={handleWebClose}
       >
         <ModalView style={styles.container}>
-          {/* Title — hidden on web, the WebModal dialog header already shows it */}
-          {!isWeb && <Text style={[styles.title, { color: textColor }]}>Send</Text>}
+          {/* Title — hidden on web */}
+          {!isWeb && <Text style={[styles.title, { color: textColor }]}>Send Short</Text>}
 
-          {/* Search / Message input */}
+          {/* Zap preview card */}
+          <ZapPreviewCard zap={zapData} creator={creator} isDark={isDark} />
+
+          {/* Search */}
           <View style={[styles.searchRow, { backgroundColor: inputBg }]}>
             <TextInput
               style={[styles.searchInput, { color: textColor }]}
@@ -214,7 +418,7 @@ export const SendSheet = forwardRef<BottomSheet, SendSheetProps>(
             />
           </View>
 
-          {/* Optional caption */}
+          {/* Optional message caption */}
           <View style={[styles.captionRow, { borderColor }]}>
             <TextInput
               style={[styles.captionInput, { color: textColor }]}
@@ -341,7 +545,7 @@ function ActionButton({
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingHorizontal: 16, paddingTop: 4 },
+  container: { flex: 1, paddingHorizontal: 16, paddingTop: 8 },
   title: { fontSize: 17, fontWeight: '700', textAlign: 'center', marginBottom: 14 },
   searchRow: {
     borderRadius: 12,

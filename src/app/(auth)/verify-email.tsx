@@ -18,6 +18,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import { AppLogger } from '@/utils/logger';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { getCleanErrorMessage } from '@/utils/errors';
+import { AuthLayoutContainer } from '@/components/auth/AuthLayoutContainer';
 
 const ACCENT = '#208AEF';
 
@@ -99,71 +100,73 @@ export default function VerifyEmailScreen() {
   const c = isDark ? dark : light;
 
   return (
-    <SafeAreaView style={[styles.safeArea, { backgroundColor: c.bg }]}>
-      <View style={styles.container}>
-        {/* Icon */}
-        <View style={styles.iconContainer}>
-          <MailCheck size={56} color="#fff" strokeWidth={1.5} />
+    <AuthLayoutContainer>
+      <SafeAreaView style={[styles.safeArea, { backgroundColor: c.bg }]}>
+        <View style={styles.container}>
+          {/* Icon */}
+          <View style={styles.iconContainer}>
+            <MailCheck size={56} color="#fff" strokeWidth={1.5} />
+          </View>
+
+          <View style={styles.gap32} />
+
+          {/* Heading */}
+          <Text style={[styles.title, { color: c.text }]}>Verify your email</Text>
+
+          <View style={styles.gap16} />
+
+          <Text style={[styles.body, { color: c.textSecondary }]}>
+            {"We've sent a confirmation email to:"}
+          </Text>
+          <Text style={[styles.emailDisplay, { color: c.text }]}>{displayEmail}</Text>
+
+          <View style={styles.gap12} />
+
+          <Text style={[styles.body, { color: c.textSecondary }]}>
+            Please check your inbox and click the verification link to continue.
+          </Text>
+
+          <View style={styles.gap48} />
+
+          {/* Confirm button */}
+          <TouchableOpacity
+            style={[styles.primaryButton, isChecking && styles.disabled]}
+            onPress={handleCheckStatus}
+            disabled={isChecking || isResending}
+            activeOpacity={0.85}
+          >
+            {isChecking ? (
+              <ActivityIndicator color="#fff" size="small" />
+            ) : (
+              <Text style={styles.primaryButtonText}>{"I've confirmed my email"}</Text>
+            )}
+          </TouchableOpacity>
+
+          <View style={styles.gap12} />
+
+          {/* Resend */}
+          <TouchableOpacity
+            style={[styles.secondaryButton, { borderColor: c.border }]}
+            onPress={handleResend}
+            disabled={isResending || isChecking}
+            activeOpacity={0.7}
+          >
+            {isResending ? (
+              <ActivityIndicator color={ACCENT} size="small" />
+            ) : (
+              <Text style={[styles.secondaryButtonText, { color: ACCENT }]}>Resend email</Text>
+            )}
+          </TouchableOpacity>
+
+          <View style={styles.gap12} />
+
+          {/* Back to login */}
+          <TouchableOpacity onPress={handleBack} disabled={isChecking || isResending}>
+            <Text style={[styles.backText, { color: c.textSecondary }]}>Back to Login</Text>
+          </TouchableOpacity>
         </View>
-
-        <View style={styles.gap32} />
-
-        {/* Heading */}
-        <Text style={[styles.title, { color: c.text }]}>Verify your email</Text>
-
-        <View style={styles.gap16} />
-
-        <Text style={[styles.body, { color: c.textSecondary }]}>
-          {"We've sent a confirmation email to:"}
-        </Text>
-        <Text style={[styles.emailDisplay, { color: c.text }]}>{displayEmail}</Text>
-
-        <View style={styles.gap12} />
-
-        <Text style={[styles.body, { color: c.textSecondary }]}>
-          Please check your inbox and click the verification link to continue.
-        </Text>
-
-        <View style={styles.gap48} />
-
-        {/* Confirm button */}
-        <TouchableOpacity
-          style={[styles.primaryButton, isChecking && styles.disabled]}
-          onPress={handleCheckStatus}
-          disabled={isChecking || isResending}
-          activeOpacity={0.85}
-        >
-          {isChecking ? (
-            <ActivityIndicator color="#fff" size="small" />
-          ) : (
-            <Text style={styles.primaryButtonText}>{"I've confirmed my email"}</Text>
-          )}
-        </TouchableOpacity>
-
-        <View style={styles.gap12} />
-
-        {/* Resend */}
-        <TouchableOpacity
-          style={[styles.secondaryButton, { borderColor: c.border }]}
-          onPress={handleResend}
-          disabled={isResending || isChecking}
-          activeOpacity={0.7}
-        >
-          {isResending ? (
-            <ActivityIndicator color={ACCENT} size="small" />
-          ) : (
-            <Text style={[styles.secondaryButtonText, { color: ACCENT }]}>Resend email</Text>
-          )}
-        </TouchableOpacity>
-
-        <View style={styles.gap12} />
-
-        {/* Back to login */}
-        <TouchableOpacity onPress={handleBack} disabled={isChecking || isResending}>
-          <Text style={[styles.backText, { color: c.textSecondary }]}>Back to Login</Text>
-        </TouchableOpacity>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </AuthLayoutContainer>
   );
 }
 

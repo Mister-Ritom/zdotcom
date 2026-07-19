@@ -29,6 +29,8 @@ import { storyService } from '@/services/storyService';
 import { useFeedStore } from '@/stores/useFeedStore';
 import { router } from 'expo-router';
 import { type OptionsContentType } from '@/contexts/OptionsSheetContext';
+import { WebModal } from '@/components/WebModal';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 export interface OptionsSheetProps {
   zapId?: string | null;
@@ -136,6 +138,116 @@ export const OptionsSheet = forwardRef<BottomSheetModal, OptionsSheetProps>(
     const contentLabel =
       contentType === 'story' ? 'Story' : contentType === 'short' ? 'Short' : 'Post';
 
+    const { isDesktopWeb } = useBreakpoint();
+
+    const sheetContent = (
+      <>
+        {Platform.OS !== 'web' && (
+          <View style={styles.header}>
+            <Text style={[styles.headerTitle, { color: textColor }]}>Options</Text>
+            <Text style={[styles.headerSub, { color: subText }]}>{contentLabel}</Text>
+          </View>
+        )}
+
+        {/* Owner-only actions */}
+        {isOwner && (
+          <>
+            <TouchableOpacity style={styles.option} onPress={handleEdit} activeOpacity={0.7}>
+              <View style={[styles.iconWrapper, { backgroundColor: 'rgba(32,138,239,0.12)' }]}>
+                <Pencil size={20} color="#208AEF" />
+              </View>
+              <View style={styles.optionTextWrap}>
+                <Text style={[styles.optionText, { color: textColor }]}>Edit {contentLabel}</Text>
+                <Text style={[styles.optionHint, { color: subText }]}>
+                  {contentType === 'zap' ? 'Change text or media' : 'Change caption'}
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.option}
+              onPress={handleDelete}
+              activeOpacity={0.7}
+              disabled={isDeleting}
+            >
+              <View style={[styles.iconWrapper, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
+                {isDeleting ? (
+                  <ActivityIndicator size="small" color="#EF4444" />
+                ) : (
+                  <Trash2 size={20} color="#EF4444" />
+                )}
+              </View>
+              <View style={styles.optionTextWrap}>
+                <Text style={[styles.optionText, { color: '#EF4444' }]}>
+                  Delete {contentLabel}
+                </Text>
+                <Text style={[styles.optionHint, { color: subText }]}>
+                  Permanently remove this {contentLabel.toLowerCase()}
+                </Text>
+              </View>
+            </TouchableOpacity>
+
+            <View style={styles.divider} />
+          </>
+        )}
+
+        {/* Bookmark — only for zaps/shorts */}
+        {contentType !== 'story' && (
+          <TouchableOpacity style={styles.option} onPress={handleBookmark} activeOpacity={0.7}>
+            <View style={[styles.iconWrapper, { backgroundColor: iconBg }]}>
+              <Bookmark
+                size={22}
+                color={bookmarked ? '#208AEF' : iconColor}
+                fill={bookmarked ? '#208AEF' : 'none'}
+              />
+            </View>
+            <Text style={[styles.optionText, { color: textColor }]}>
+              {bookmarked ? 'Remove from Bookmarks' : 'Save to Bookmarks'}
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity style={styles.option} onPress={close} activeOpacity={0.7}>
+          <View style={[styles.iconWrapper, { backgroundColor: iconBg }]}>
+            <Share2 size={22} color={iconColor} />
+          </View>
+          <Text style={[styles.optionText, { color: textColor }]}>Share via…</Text>
+        </TouchableOpacity>
+
+        {!isOwner && (
+          <TouchableOpacity style={styles.option} onPress={close} activeOpacity={0.7}>
+            <View style={[styles.iconWrapper, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
+              <AlertTriangle size={22} color="#EF4444" />
+            </View>
+            <Text style={[styles.optionText, { color: '#EF4444' }]}>Report content</Text>
+          </TouchableOpacity>
+        )}
+
+        <View style={styles.divider} />
+
+        <TouchableOpacity style={styles.option} onPress={close} activeOpacity={0.7}>
+          <View style={[styles.iconWrapper, { backgroundColor: iconBg }]}>
+            <XCircle size={22} color={iconColor} />
+          </View>
+          <Text style={[styles.optionText, { color: textColor }]}>Cancel</Text>
+        </TouchableOpacity>
+      </>
+    );
+
+    if (isDesktopWeb) {
+      return (
+        <WebModal
+          ref={ref as any}
+          webTitle={`Options — ${contentLabel}`}
+          onWebClose={onClose}
+        >
+          <View style={[styles.container, { paddingBottom: 20 }]}>
+            {sheetContent}
+          </View>
+        </WebModal>
+      );
+    }
+
     return (
       <BottomSheetModal
         ref={ref}
@@ -149,95 +261,7 @@ export const OptionsSheet = forwardRef<BottomSheetModal, OptionsSheetProps>(
         enableDynamicSizing={false}
       >
         <BottomSheetView style={styles.container}>
-          {Platform.OS !== 'web' && (
-            <View style={styles.header}>
-              <Text style={[styles.headerTitle, { color: textColor }]}>Options</Text>
-              <Text style={[styles.headerSub, { color: subText }]}>{contentLabel}</Text>
-            </View>
-          )}
-
-          {/* Owner-only actions */}
-          {isOwner && (
-            <>
-              <TouchableOpacity style={styles.option} onPress={handleEdit} activeOpacity={0.7}>
-                <View style={[styles.iconWrapper, { backgroundColor: 'rgba(32,138,239,0.12)' }]}>
-                  <Pencil size={20} color="#208AEF" />
-                </View>
-                <View style={styles.optionTextWrap}>
-                  <Text style={[styles.optionText, { color: textColor }]}>Edit {contentLabel}</Text>
-                  <Text style={[styles.optionHint, { color: subText }]}>
-                    {contentType === 'zap' ? 'Change text or media' : 'Change caption'}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.option}
-                onPress={handleDelete}
-                activeOpacity={0.7}
-                disabled={isDeleting}
-              >
-                <View style={[styles.iconWrapper, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
-                  {isDeleting ? (
-                    <ActivityIndicator size="small" color="#EF4444" />
-                  ) : (
-                    <Trash2 size={20} color="#EF4444" />
-                  )}
-                </View>
-                <View style={styles.optionTextWrap}>
-                  <Text style={[styles.optionText, { color: '#EF4444' }]}>
-                    Delete {contentLabel}
-                  </Text>
-                  <Text style={[styles.optionHint, { color: subText }]}>
-                    Permanently remove this {contentLabel.toLowerCase()}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-
-              <View style={styles.divider} />
-            </>
-          )}
-
-          {/* Bookmark — only for zaps/shorts */}
-          {contentType !== 'story' && (
-            <TouchableOpacity style={styles.option} onPress={handleBookmark} activeOpacity={0.7}>
-              <View style={[styles.iconWrapper, { backgroundColor: iconBg }]}>
-                <Bookmark
-                  size={22}
-                  color={bookmarked ? '#208AEF' : iconColor}
-                  fill={bookmarked ? '#208AEF' : 'none'}
-                />
-              </View>
-              <Text style={[styles.optionText, { color: textColor }]}>
-                {bookmarked ? 'Remove from Bookmarks' : 'Save to Bookmarks'}
-              </Text>
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity style={styles.option} onPress={close} activeOpacity={0.7}>
-            <View style={[styles.iconWrapper, { backgroundColor: iconBg }]}>
-              <Share2 size={22} color={iconColor} />
-            </View>
-            <Text style={[styles.optionText, { color: textColor }]}>Share via…</Text>
-          </TouchableOpacity>
-
-          {!isOwner && (
-            <TouchableOpacity style={styles.option} onPress={close} activeOpacity={0.7}>
-              <View style={[styles.iconWrapper, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
-                <AlertTriangle size={22} color="#EF4444" />
-              </View>
-              <Text style={[styles.optionText, { color: '#EF4444' }]}>Report content</Text>
-            </TouchableOpacity>
-          )}
-
-          <View style={styles.divider} />
-
-          <TouchableOpacity style={styles.option} onPress={close} activeOpacity={0.7}>
-            <View style={[styles.iconWrapper, { backgroundColor: iconBg }]}>
-              <XCircle size={22} color={iconColor} />
-            </View>
-            <Text style={[styles.optionText, { color: textColor }]}>Cancel</Text>
-          </TouchableOpacity>
+          {sheetContent}
         </BottomSheetView>
       </BottomSheetModal>
     );

@@ -13,12 +13,15 @@ import {
   ShieldCheck,
   Zap,
 } from "lucide-react-native";
-import React, { useCallback } from "react";
+import React, { useState } from "react";
 import {
+  Platform,
+  Pressable,
   Share,
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View,
 } from "react-native";
 
@@ -52,6 +55,7 @@ interface Props {
   onLike?: () => void;
   onBookmark?: () => void;
   onBoost?: () => void;
+  onShare?: () => void;
   disableBoost?: boolean;
   onOptions?: () => void;
 }
@@ -68,126 +72,180 @@ export function ZapCard({
   onLike,
   onBookmark,
   onBoost,
+  onShare,
   disableBoost = false,
   onOptions,
 }: Props) {
   const isDark = useColorScheme() === "dark";
+  const [isHovered, setIsHovered] = useState(false);
+  const [mediaWidth, setMediaWidth] = useState<number | null>(null);
   const hasMedia = zap.mediaUrls.length > 0;
   const hasText = zap.text.trim().length > 0;
 
-  const handleShare = useCallback(async () => {
-    await Share.share({ message: `Check this out on Z! z://zap/${zap.id}` });
-  }, [zap.id]);
+  const handleWidthCalculated = useCallback((w: number) => {
+    setMediaWidth((prev) => {
+      if (prev !== null && Math.abs(prev - w) < 2) return prev;
+      return w;
+    });
+  }, []);
 
   const cardBg = isDark ? "#18181B" : "#FFFFFF";
-  const borderColor = isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)";
+  const borderColor = isHovered && Platform.OS === "web"
+    ? (isDark ? "rgba(255,255,255,0.22)" : "rgba(0,0,0,0.20)")
+    : (isDark ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.08)");
+
+  const webShadowStyle = isHovered && Platform.OS === "web" ? {
+    boxShadow: isDark ? "0 4px 20px rgba(0,0,0,0.6)" : "0 4px 20px rgba(0,0,0,0.08)",
+  } as any : {};
+
+  const { width: windowWidth } = useWindowDimensions();
+  const isDesktopWeb = Platform.OS === "web" && windowWidth >= 768;
+
+  const dynamicCardStyle = isDesktopWeb && hasMedia && mediaWidth !== null && mediaWidth < 610 ? {
+    width: Math.max(260, Math.min(640, mediaWidth + 28)),
+    alignSelf: "center" as const,
+    ...(Platform.OS === "web" ? ({ transition: "width 0.35s cubic-bezier(0.16, 1, 0.3, 1)" } as any) : {}),
+  } : {
+    width: "100%" as const,
+    ...(Platform.OS === "web" ? ({ transition: "width 0.35s cubic-bezier(0.16, 1, 0.3, 1)" } as any) : {}),
+  };
 
   return (
-    <View style={[styles.card, { backgroundColor: cardBg, borderColor }]}>
+    <Pressable
+      onHoverIn={() => setIsHovered(true)}
+      onHoverOut={() => setIsHovered(false)}
+      style={[
+        styles.card,
+        { backgroundColor: cardBg, borderColor },
+        dynamicCardStyle,
+        webShadowStyle,
+      ]}
+    >
       {/* Header — tapping navigates to zap */}
-      <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <Avatar
-              uri={user?.profilePictureUrl}
-              name={user?.displayName ?? "?"}
-              size={42}
-            />
-            <View style={styles.headerText}>
-              <View style={styles.nameRow}>
-                <Text
-                  style={[
-                    styles.displayName,
-                    { color: isDark ? "#F4F4F5" : "#18181B" },
-                  ]}
-                >
-                  {user?.displayName ?? "..."}
-                </Text>
-                {user?.isVerified && (
-                  <ShieldCheck
-                    size={14}
-                    color={ACCENT}
-                    strokeWidth={2.5}
-                    style={{ marginLeft: 4 }}
-                  />
-                )}
-                <Text
-                  style={[
-                    styles.timeAgo,
-                    { color: isDark ? "#71717A" : "#A1A1AA" },
-                  ]}
-                >
-                  {"  /  "}
-                  {timeAgo(zap.createdAt)}
-                </Text>
-              </View>
+      <Pressable
+        onPress={onPress}
+        style={({ hovered }: any) => [
+          styles.header,
+          hovered && Platform.OS === "web" && { backgroundColor: isDark ? "rgba(255,255,255,0.02)" : "rgba(0,0,0,0.02)" },
+          Platform.OS === "web" && ({ cursor: "pointer" } as any),
+        ]}
+      >
+        <View style={styles.headerLeft}>
+          <Avatar
+            uri={user?.profilePictureUrl}
+            name={user?.displayName ?? "?"}
+            size={42}
+          />
+          <View style={styles.headerText}>
+            <View style={styles.nameRow}>
               <Text
                 style={[
-                  styles.username,
-                  { color: isDark ? "#52525B" : "#A1A1AA" },
+                  styles.displayName,
+                  { color: isDark ? "#F4F4F5" : "#18181B" },
                 ]}
               >
-                @{user?.username ?? "..."}
-                {zap.isThread && <Text style={{ color: ACCENT }}> # thread</Text>}
+                {user?.displayName ?? "..."}
+              </Text>
+              {user?.isVerified && (
+                <ShieldCheck
+                  size={14}
+                  color={ACCENT}
+                  strokeWidth={2.5}
+                  style={{ marginLeft: 4 }}
+                />
+              )}
+              <Text
+                style={[
+                  styles.timeAgo,
+                  { color: isDark ? "#71717A" : "#A1A1AA" },
+                ]}
+              >
+                {"  /  "}
+                {timeAgo(zap.createdAt)}
               </Text>
             </View>
+            <Text
+              style={[
+                styles.username,
+                { color: isDark ? "#52525B" : "#A1A1AA" },
+              ]}
+            >
+              @{user?.username ?? "..."}
+              {zap.isThread && <Text style={{ color: ACCENT }}> # thread</Text>}
+            </Text>
           </View>
-          <TouchableOpacity hitSlop={8} onPress={onOptions}>
-            <Ellipsis size={18} color={isDark ? "#52525B" : "#A1A1AA"} />
-          </TouchableOpacity>
         </View>
-      </TouchableOpacity>
+        <Pressable
+          hitSlop={8}
+          onPress={onOptions}
+          style={({ hovered }: any) => [
+            styles.iconBtn,
+            hovered && Platform.OS === "web" && { backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)", borderRadius: 20 },
+            Platform.OS === "web" && ({ cursor: "pointer" } as any),
+          ]}
+        >
+          <Ellipsis size={18} color={isDark ? "#52525B" : "#A1A1AA"} />
+        </Pressable>
+      </Pressable>
 
       {/* Media */}
       {hasMedia && (
-        <MediaCarousel mediaUrls={zap.mediaUrls} />
+        <MediaCarousel mediaUrls={zap.mediaUrls} onWidthCalculated={handleWidthCalculated} />
       )}
 
       {/* Text-only big block — tappable */}
       {!hasMedia && (
-        <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+        <Pressable
+          onPress={onPress}
+          style={({ hovered }: any) => [
+            styles.textBlock,
+            {
+              backgroundColor: isDark
+                ? "linear-gradient(135deg, #0F172A 0%, #000 100%)"
+                : undefined,
+              opacity: hovered && Platform.OS === "web" ? 0.95 : 1,
+            },
+            Platform.OS === "web" && ({ cursor: "pointer" } as any),
+          ]}
+        >
           <View
             style={[
-              styles.textBlock,
+              styles.textBlockInner,
               {
-                backgroundColor: isDark
-                  ? "linear-gradient(135deg, #0F172A 0%, #000 100%)"
-                  : undefined,
+                backgroundColor: isDark ? "#0F172A" : "#EFF6FF",
               },
             ]}
           >
-            <View
+            <Zap
+              size={36}
+              color={ACCENT}
+              strokeWidth={2.5}
+              style={{ marginBottom: 12 }}
+            />
+            <Text
               style={[
-                styles.textBlockInner,
-                {
-                  backgroundColor: isDark ? "#0F172A" : "#EFF6FF",
-                },
+                styles.textBlockQuote,
+                { color: isDark ? "#93C5FD" : "#1D4ED8" },
               ]}
             >
-              <Zap
-                size={36}
-                color={ACCENT}
-                strokeWidth={2.5}
-                style={{ marginBottom: 12 }}
-              />
-              <Text
-                style={[
-                  styles.textBlockQuote,
-                  { color: isDark ? "#93C5FD" : "#1D4ED8" },
-                ]}
-              >
-                &quot;{zap.text}&quot;
-              </Text>
-            </View>
+              &quot;{zap.text}&quot;
+            </Text>
           </View>
-        </TouchableOpacity>
+        </Pressable>
       )}
 
       {/* Caption — tapping navigates to zap */}
       {hasMedia && hasText && (
-        <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={styles.caption}>
+        <Pressable
+          onPress={onPress}
+          style={({ hovered }: any) => [
+            styles.caption,
+            hovered && Platform.OS === "web" && { opacity: 0.85 },
+            Platform.OS === "web" && ({ cursor: "pointer" } as any),
+          ]}
+        >
           <ZapText text={zap.text} />
-        </TouchableOpacity>
+        </Pressable>
       )}
 
       {/* Actions */}
@@ -234,21 +292,29 @@ export function ZapCard({
           />
         </View>
         <View style={styles.actionsRight}>
-          <TouchableOpacity
-            onPress={handleShare}
+          <Pressable
+            onPress={onShare}
             hitSlop={8}
-            style={styles.iconBtn}
+            style={({ hovered }: any) => [
+              styles.iconBtn,
+              hovered && Platform.OS === "web" && { backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)", borderRadius: 20 },
+              Platform.OS === "web" && ({ cursor: "pointer" } as any),
+            ]}
           >
             <Share2
               size={17}
               color={isDark ? "#52525B" : "#A1A1AA"}
               strokeWidth={2}
             />
-          </TouchableOpacity>
-          <TouchableOpacity
+          </Pressable>
+          <Pressable
             onPress={onBookmark}
             hitSlop={8}
-            style={styles.iconBtn}
+            style={({ hovered }: any) => [
+              styles.iconBtn,
+              hovered && Platform.OS === "web" && { backgroundColor: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.06)", borderRadius: 20 },
+              Platform.OS === "web" && ({ cursor: "pointer" } as any),
+            ]}
           >
             <Bookmark
               size={17}
@@ -256,10 +322,10 @@ export function ZapCard({
               fill={isBookmarked ? ACCENT : "none"}
               strokeWidth={2}
             />
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </View>
-    </View>
+    </Pressable>
   );
 }
 
@@ -268,6 +334,7 @@ interface ActionBtnProps {
   label: string;
   active?: boolean;
   activeColor?: string;
+  disabled?: boolean;
   isText?: boolean;
   onPress?: () => void;
 }
@@ -283,18 +350,23 @@ function ActionBtn({
 }: ActionBtnProps) {
   const isDark = useColorScheme() === "dark";
   const bg = isDark ? "#27272A" : "#F4F4F5";
+  const hoverBg = isDark ? "#3F3F46" : "#E4E4E7";
   const textColor = active ? activeColor : isDark ? "#71717A" : "#A1A1AA";
 
   return (
-    <TouchableOpacity
+    <Pressable
       onPress={onPress}
-      style={[styles.actionBtn, { backgroundColor: bg }, disabled && { opacity: 0.5 }]}
-      activeOpacity={0.7}
+      style={({ hovered, pressed }: any) => [
+        styles.actionBtn,
+        { backgroundColor: hovered && Platform.OS === "web" ? hoverBg : bg },
+        (pressed || disabled) && { opacity: 0.6 },
+        Platform.OS === "web" && ({ cursor: disabled ? "not-allowed" : "pointer" } as any),
+      ]}
       disabled={disabled}
     >
       {icon}
       <Text style={[styles.actionLabel, { color: textColor }]}>{label}</Text>
-    </TouchableOpacity>
+    </Pressable>
   );
 }
 
